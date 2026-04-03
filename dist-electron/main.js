@@ -1,6 +1,27 @@
 "use strict";
+var __create = Object.create;
 var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 const require$$0$6 = require("electron");
 const require$$1 = require("path");
@@ -3023,28 +3044,28 @@ var deferred_1 = dist.deferred = deferred;
 createDeferred = dist.createDeferred = deferred;
 dist.default = deferred;
 var __defProp2 = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __getOwnPropDesc2 = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames2 = Object.getOwnPropertyNames;
+var __hasOwnProp2 = Object.prototype.hasOwnProperty;
 var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+  return fn && (res = (0, fn[__getOwnPropNames2(fn)[0]])(fn = 0)), res;
 };
 var __commonJS = (cb, mod) => function __require() {
-  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  return mod || (0, cb[__getOwnPropNames2(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
 var __export = (target, all) => {
   for (var name in all)
     __defProp2(target, name, { get: all[name], enumerable: true });
 };
-var __copyProps = (to, from, except, desc) => {
+var __copyProps2 = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp2(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    for (let key of __getOwnPropNames2(from))
+      if (!__hasOwnProp2.call(to, key) && key !== except)
+        __defProp2(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc2(from, key)) || desc.enumerable });
   }
   return to;
 };
-var __toCommonJS = (mod) => __copyProps(__defProp2({}, "__esModule", { value: true }), mod);
+var __toCommonJS = (mod) => __copyProps2(__defProp2({}, "__esModule", { value: true }), mod);
 function pathspec(...paths) {
   const key = new String(paths);
   cache.set(key, paths);
@@ -10980,37 +11001,79 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("deploy:getHistory", async (event, projectId) => {
     try {
-      if (projectId) {
-        const history = db.all(`
-          SELECT h.*, p.name as project_name FROM deploy_history h
-          LEFT JOIN projects p ON h.project_id = p.id
-          WHERE h.project_id = ? ORDER BY h.created_at DESC LIMIT 50
-        `, [projectId]);
-        return { success: true, data: history };
-      } else {
-        const history = db.all(`
-          SELECT h.*, p.name as project_name FROM deploy_history h
-          LEFT JOIN projects p ON h.project_id = p.id
-          ORDER BY h.created_at DESC LIMIT 50
-        `);
-        return { success: true, data: history };
-      }
+      const rows = projectId ? db.all("deploy_history").filter((h) => h.project_id === projectId) : db.all("deploy_history");
+      const projects = db.all("projects");
+      const projectMap = new Map(projects.map((p) => [p.id, p.name]));
+      const mapped = rows.slice(0, 50).map((h) => ({
+        id: h.id,
+        projectId: h.project_id,
+        projectName: projectMap.get(h.project_id) || "",
+        deployType: h.deploy_type,
+        gitBranch: h.git_branch,
+        gitCommit: h.git_commit,
+        status: h.status,
+        startedAt: h.started_at,
+        finishedAt: h.finished_at,
+        log: h.log || "",
+        createdAt: h.created_at,
+        updatedAt: h.updated_at
+      }));
+      return { success: true, data: mapped };
     } catch (error) {
       return { success: false, error: error.message };
     }
   });
   require$$0$6.ipcMain.handle("template:getAll", async () => {
     try {
-      const templates = db.all("SELECT * FROM deploy_templates ORDER BY created_at DESC");
-      return { success: true, data: templates };
+      const rows = db.all("deploy_templates");
+      const projects = db.all("projects");
+      const projectMap = new Map(projects.map((p) => [p.id, p.name]));
+      const mapped = rows.map((t) => ({
+        id: t.id,
+        name: t.name,
+        projectId: t.project_id,
+        projectName: projectMap.get(t.project_id) || "",
+        deployType: t.deploy_type,
+        serverCredentialId: t.server_credential_id,
+        svnCredentialId: t.svn_credential_id,
+        remotePath: t.remote_path || "",
+        svnPath: t.svn_path || "",
+        backupEnabled: t.backup_enabled === 1,
+        preCommand: t.pre_command || "",
+        postCommand: t.post_command || "",
+        description: t.description || "",
+        createdAt: t.created_at,
+        updatedAt: t.updated_at
+      }));
+      return { success: true, data: mapped };
     } catch (error) {
       return { success: false, error: error.message };
     }
   });
   require$$0$6.ipcMain.handle("template:getById", async (event, id) => {
     try {
-      const template = db.get("SELECT * FROM deploy_templates WHERE id=?", [id]);
-      return { success: true, data: template };
+      const t = db.get("SELECT * FROM deploy_templates WHERE id=?", [id]);
+      if (!t) return { success: false, error: "Template not found" };
+      const projects = db.all("projects");
+      const projectMap = new Map(projects.map((p) => [p.id, p.name]));
+      const mapped = {
+        id: t.id,
+        name: t.name,
+        projectId: t.project_id,
+        projectName: projectMap.get(t.project_id) || "",
+        deployType: t.deploy_type,
+        serverCredentialId: t.server_credential_id,
+        svnCredentialId: t.svn_credential_id,
+        remotePath: t.remote_path || "",
+        svnPath: t.svn_path || "",
+        backupEnabled: t.backup_enabled === 1,
+        preCommand: t.pre_command || "",
+        postCommand: t.post_command || "",
+        description: t.description || "",
+        createdAt: t.created_at,
+        updatedAt: t.updated_at
+      };
+      return { success: true, data: mapped };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -11157,6 +11220,35 @@ function registerIpcHandlers(database2) {
         return { success: true, path: result.filePaths[0] };
       }
       return { success: false };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+  require$$0$6.ipcMain.handle("config:getDbPath", async () => {
+    return { success: true, path: require$$1.join(require$$0$6.app.getPath("userData"), "deploy-manager.json") };
+  });
+  require$$0$6.ipcMain.handle("config:clearAll", async () => {
+    try {
+      const schema = {
+        groups: [],
+        projects: [],
+        serverCredentials: [],
+        svnCredentials: [],
+        deployTemplates: [],
+        deployHistory: []
+      };
+      db.data = schema;
+      db.save();
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+  require$$0$6.ipcMain.handle("config:openDataDir", async () => {
+    try {
+      const { shell: shell2 } = await import("electron");
+      await shell2.openPath(require$$0$6.app.getPath("userData"));
+      return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
     }

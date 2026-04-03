@@ -1,4 +1,5 @@
-import { ipcMain, dialog } from 'electron'
+import { ipcMain, dialog, app, shell } from 'electron'
+import { join } from 'path'
 import { DatabaseManager } from '../database'
 import { GitService } from '../services/git.service'
 import { SSHService } from '../services/ssh.service'
@@ -711,6 +712,38 @@ export function registerIpcHandlers(database: DatabaseManager) {
         return { success: true, path: result.filePaths[0] }
       }
       return { success: false }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('config:getDbPath', async () => {
+    return { success: true, path: join(app.getPath('userData'), 'deploy-manager.json') }
+  })
+
+  ipcMain.handle('config:clearAll', async () => {
+    try {
+      const schema: Record<string, any[]> = {
+        groups: [],
+        projects: [],
+        serverCredentials: [],
+        svnCredentials: [],
+        deployTemplates: [],
+        deployHistory: []
+      }
+      ;(db as any).data = schema
+      ;(db as any).save()
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('config:openDataDir', async () => {
+    try {
+      const { shell } = await import('electron')
+      await shell.openPath(app.getPath('userData'))
+      return { success: true }
     } catch (error: any) {
       return { success: false, error: error.message }
     }

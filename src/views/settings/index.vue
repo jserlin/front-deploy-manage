@@ -82,6 +82,17 @@ const exporting = ref(false)
 const importing = ref(false)
 const dbPath = ref('')
 
+const loadDbPath = async () => {
+  try {
+    const result = await window.electronAPI.config.getDbPath()
+    if (result.success) {
+      dbPath.value = result.path
+    }
+  } catch (error) {
+    console.error('Failed to get db path:', error)
+  }
+}
+
 const exportConfig = async () => {
   if (exportIncludePasswords.value) {
     try {
@@ -152,33 +163,42 @@ const importConfig = async () => {
   }
 }
 
-const openDataDirectory = () => {
-  ElMessage.info('请在文件管理器中查看数据目录')
+const openDataDirectory = async () => {
+  try {
+    await window.electronAPI.config.openDataDir()
+  } catch (error: any) {
+    ElMessage.error(error.message || '打开目录失败')
+  }
 }
 
 const clearAllData = async () => {
   try {
     await ElMessageBox.confirm(
-      '此操作将清除所有数据且不可恢复。确定继续吗？',
+      '确定要清除所有数据吗？此操作不可恢复！',
       '危险操作',
       {
         confirmButtonText: '确定清除',
         cancelButtonText: '取消',
-        type: 'error',
+        type: 'warning',
         confirmButtonClass: 'el-button--danger'
       }
     )
 
-    // 这里应该调用后端 API 清除数据
-    ElMessage.success('数据已清除')
-  } catch {
-    // 用户取消
+    const result = await window.electronAPI.config.clearAll()
+    if (result.success) {
+      ElMessage.success('数据已清除')
+    } else {
+      ElMessage.error(result.error || '清除失败')
+    }
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '清除失败')
+    }
   }
 }
 
 onMounted(() => {
-  // 获取数据库路径
-  dbPath.value = '用户数据目录/deploy-manager.db'
+  loadDbPath()
 })
 </script>
 
