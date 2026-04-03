@@ -10624,8 +10624,16 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("group:getAll", async () => {
     try {
-      const groups = db.all("SELECT * FROM groups ORDER BY sort_order, name");
-      return { success: true, data: groups };
+      const rows = db.all("groups");
+      const mapped = rows.map((g) => ({
+        id: g.id,
+        name: g.name,
+        color: g.color || "#409EFF",
+        sortOrder: g.sort_order || 0,
+        createdAt: g.created_at,
+        updatedAt: g.updated_at
+      }));
+      return { success: true, data: mapped };
     } catch (error) {
       return { success: false, error: error.message };
     }

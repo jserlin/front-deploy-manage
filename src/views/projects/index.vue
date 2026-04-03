@@ -2,10 +2,16 @@
   <div class="projects-page">
     <div class="page-header">
       <h2>项目管理</h2>
-      <el-button type="primary" @click="showAddDialog">
-        <el-icon><Plus /></el-icon>
-        添加项目
-      </el-button>
+      <div class="header-actions">
+        <el-button @click="showGroupDialog">
+          <el-icon><Collection /></el-icon>
+          分组管理
+        </el-button>
+        <el-button type="primary" @click="showAddDialog">
+          <el-icon><Plus /></el-icon>
+          添加项目
+        </el-button>
+      </div>
     </div>
 
     <div class="filter-bar">
@@ -38,7 +44,7 @@
       >
         <div class="card-header">
           <h3>{{ project.name }}</h3>
-          <el-tag v-if="project.groupName" :color="project.groupColor" size="small">
+          <el-tag v-if="project.groupName" :color="project.groupColor" size="small" style="color: #fff; border: none;">
             {{ project.groupName }}
           </el-tag>
         </div>
@@ -75,7 +81,7 @@
       </el-card>
     </div>
 
-    <!-- 添加/编辑对话框 -->
+    <!-- 添加/编辑项目对话框 -->
     <el-dialog
       v-model="dialogVisible"
       :title="isEdit ? '编辑项目' : '添加项目'"
@@ -111,14 +117,29 @@
         </el-form-item>
 
         <el-form-item label="所属分组">
-          <el-select v-model="formData.groupId" placeholder="选择分组" clearable>
-            <el-option
-              v-for="group in groups"
-              :key="group.id"
-              :label="group.name"
-              :value="group.id"
-            />
-          </el-select>
+          <div style="display: flex; gap: 8px; width: 100%;">
+            <el-select
+              v-model="formData.groupId"
+              placeholder="选择分组"
+              clearable
+              style="flex: 1"
+            >
+              <el-option
+                v-for="group in groups"
+                :key="group.id"
+                :label="group.name"
+                :value="group.id"
+              >
+                <span style="display: flex; align-items: center; gap: 8px;">
+                  <span :style="{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: group.color, display: 'inline-block' }"></span>
+                  {{ group.name }}
+                </span>
+              </el-option>
+            </el-select>
+            <el-button @click="showInlineGroupDialog">
+              <el-icon><Plus /></el-icon>
+            </el-button>
+          </div>
         </el-form-item>
 
         <el-form-item label="描述">
@@ -134,6 +155,86 @@
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitForm">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 分组管理对话框 -->
+    <el-dialog
+      v-model="groupDialogVisible"
+      title="分组管理"
+      width="500px"
+    >
+      <div class="group-add-bar">
+        <el-input v-model="newGroupName" placeholder="分组名称" style="width: 160px" />
+        <el-color-picker v-model="newGroupColor" size="default" />
+        <el-button type="primary" @click="addGroup" :disabled="!newGroupName.trim()">
+          <el-icon><Plus /></el-icon>
+          添加
+        </el-button>
+      </div>
+
+      <div class="group-list">
+        <div v-for="group in groups" :key="group.id" class="group-item">
+          <div class="group-item-info">
+            <span :style="{ width: '14px', height: '14px', borderRadius: '3px', backgroundColor: group.color, display: 'inline-block', flexShrink: 0 }"></span>
+            <span v-if="editingGroupId !== group.id" class="group-item-name">{{ group.name }}</span>
+            <el-input
+              v-else
+              v-model="editingGroupName"
+              size="small"
+              style="width: 120px"
+              @keyup.enter="saveGroupEdit(group)"
+            />
+          </div>
+          <div class="group-item-actions">
+            <el-button
+              v-if="editingGroupId !== group.id"
+              text
+              size="small"
+              @click="startEditGroup(group)"
+            >
+              <el-icon><Edit /></el-icon>
+            </el-button>
+            <el-button
+              v-else
+              text
+              size="small"
+              type="primary"
+              @click="saveGroupEdit(group)"
+            >
+              保存
+            </el-button>
+            <el-button text size="small" type="danger" @click="deleteGroup(group)">
+              <el-icon><Delete /></el-icon>
+            </el-button>
+          </div>
+        </div>
+        <el-empty v-if="groups.length === 0" description="暂无分组" :image-size="60" />
+      </div>
+
+      <template #footer>
+        <el-button @click="groupDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 项目弹框内联创建分组对话框 -->
+    <el-dialog
+      v-model="inlineGroupVisible"
+      title="新建分组"
+      width="400px"
+      append-to-body
+    >
+      <el-form label-width="80px">
+        <el-form-item label="分组名称">
+          <el-input v-model="inlineGroupName" placeholder="请输入分组名称" />
+        </el-form-item>
+        <el-form-item label="分组颜色">
+          <el-color-picker v-model="inlineGroupColor" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="inlineGroupVisible = false">取消</el-button>
+        <el-button type="primary" @click="createInlineGroup" :disabled="!inlineGroupName.trim()">创建并选择</el-button>
       </template>
     </el-dialog>
   </div>
@@ -191,6 +292,16 @@ const filteredProjects = computed(() => {
   
   return result
 })
+
+const groupDialogVisible = ref(false)
+const newGroupName = ref('')
+const newGroupColor = ref('#409EFF')
+const editingGroupId = ref<number | null>(null)
+const editingGroupName = ref('')
+
+const inlineGroupVisible = ref(false)
+const inlineGroupName = ref('')
+const inlineGroupColor = ref('#409EFF')
 
 const fetchGroups = async () => {
   try {
@@ -256,10 +367,8 @@ const selectPath = async () => {
   try {
     const result = await window.electronAPI.config.selectFile()
     if (result && result.success && result.path) {
-      // selectFile 现在返回的就是目录路径
       formData.value.localPath = result.path
 
-      // 自动检测 Git 信息
       const gitResult = await window.electronAPI.project.scanGit(formData.value.localPath)
       if (gitResult && gitResult.success && gitResult.data) {
         formData.value.gitRepo = gitResult.data.repo || ''
@@ -309,6 +418,117 @@ const resetForm = () => {
   }
 }
 
+const showGroupDialog = () => {
+  newGroupName.value = ''
+  newGroupColor.value = '#409EFF'
+  editingGroupId.value = null
+  editingGroupName.value = ''
+  groupDialogVisible.value = true
+}
+
+const addGroup = async () => {
+  if (!newGroupName.value.trim()) return
+  try {
+    const result = await window.electronAPI.group.create(JSON.parse(JSON.stringify({
+      name: newGroupName.value.trim(),
+      color: newGroupColor.value,
+      sortOrder: groups.value.length
+    })))
+    if (result.success) {
+      ElMessage.success('分组添加成功')
+      newGroupName.value = ''
+      newGroupColor.value = '#409EFF'
+      await fetchGroups()
+    } else {
+      ElMessage.error(result.error || '添加失败')
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '添加失败')
+  }
+}
+
+const startEditGroup = (group: any) => {
+  editingGroupId.value = group.id
+  editingGroupName.value = group.name
+}
+
+const saveGroupEdit = async (group: any) => {
+  if (!editingGroupName.value.trim()) return
+  try {
+    const result = await window.electronAPI.group.update(group.id, JSON.parse(JSON.stringify({
+      name: editingGroupName.value.trim(),
+      color: group.color,
+      sortOrder: group.sortOrder
+    })))
+    if (result.success) {
+      editingGroupId.value = null
+      editingGroupName.value = ''
+      await fetchGroups()
+      ElMessage.success('更新成功')
+    } else {
+      ElMessage.error(result.error || '更新失败')
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '更新失败')
+  }
+}
+
+const deleteGroup = async (group: any) => {
+  const inUse = projects.value.some(p => p.groupId === group.id)
+  if (inUse) {
+    ElMessage.warning(`分组 "${group.name}" 已被项目使用，无法删除`)
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除分组 "${group.name}" 吗？`,
+      '确认删除',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+    const result = await window.electronAPI.group.delete(group.id)
+    if (result.success) {
+      ElMessage.success('删除成功')
+      await fetchGroups()
+    } else {
+      ElMessage.error(result.error || '删除失败')
+    }
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '删除失败')
+    }
+  }
+}
+
+const showInlineGroupDialog = () => {
+  inlineGroupName.value = ''
+  inlineGroupColor.value = '#409EFF'
+  inlineGroupVisible.value = true
+}
+
+const createInlineGroup = async () => {
+  if (!inlineGroupName.value.trim()) return
+  try {
+    const result = await window.electronAPI.group.create(JSON.parse(JSON.stringify({
+      name: inlineGroupName.value.trim(),
+      color: inlineGroupColor.value,
+      sortOrder: groups.value.length
+    })))
+    if (result.success) {
+      await fetchGroups()
+      const newGroup = groups.value.find((g: any) => g.name === inlineGroupName.value.trim())
+      if (newGroup) {
+        formData.value.groupId = newGroup.id
+      }
+      inlineGroupVisible.value = false
+      ElMessage.success('分组创建成功')
+    } else {
+      ElMessage.error(result.error || '创建失败')
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '创建失败')
+  }
+}
+
 onMounted(async () => {
   loading.value = true
   try {
@@ -336,6 +556,11 @@ onMounted(async () => {
   h2 {
     margin: 0;
     font-size: 24px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
   }
 }
 
@@ -387,6 +612,42 @@ onMounted(async () => {
     gap: 8px;
     border-top: 1px solid #eee;
     padding-top: 12px;
+  }
+}
+
+.group-add-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.group-list {
+  .group-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .group-item-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .group-item-name {
+      font-size: 14px;
+    }
+
+    .group-item-actions {
+      display: flex;
+      align-items: center;
+    }
   }
 }
 </style>
