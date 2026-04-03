@@ -104,6 +104,10 @@
           </el-form-item>
         </template>
 
+        <el-form-item label="需要构建">
+          <el-switch v-model="deployConfig.needBuild" />
+        </el-form-item>
+
         <el-form-item label="备份旧版本">
           <el-switch v-model="deployConfig.backupEnabled" />
         </el-form-item>
@@ -203,7 +207,8 @@ const deployConfig = ref({
   remotePath: '',
   svnPath: '',
   commitMessage: '自动部署 - ' + new Date().toLocaleString(),
-  backupEnabled: true
+  backupEnabled: true,
+  needBuild: true
 })
 
 const deployProgress = ref<any>({
@@ -272,6 +277,7 @@ const startDeploy = async () => {
         svnPath: deployConfig.value.svnPath,
         commitMessage: deployConfig.value.commitMessage,
         backupEnabled: deployConfig.value.backupEnabled,
+        needBuild: deployConfig.value.needBuild,
         branch: deployConfig.value.branch
       })
     } else if (deployConfig.value.deployType === 'server') {
@@ -281,6 +287,7 @@ const startDeploy = async () => {
         serverCredential: serverCred ? JSON.parse(JSON.stringify(serverCred)) : null,
         remotePath: deployConfig.value.remotePath,
         backupEnabled: deployConfig.value.backupEnabled,
+        needBuild: deployConfig.value.needBuild,
         branch: deployConfig.value.branch
       })
     } else if (deployConfig.value.deployType === 'mixed') {
@@ -290,6 +297,7 @@ const startDeploy = async () => {
       result = await window.electronAPI.deploy.mixed({
         project: plainProject,
         branch: deployConfig.value.branch,
+        needBuild: deployConfig.value.needBuild,
         targets: [
           {
             type: 'svn',

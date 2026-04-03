@@ -28,9 +28,24 @@ export class GitService {
 
   private getGit(localPath: string): SimpleGit {
     if (!this.gitInstances.has(localPath)) {
-      this.gitInstances.set(localPath, simpleGit(localPath))
+      this.gitInstances.set(localPath, simpleGit(localPath, {
+        env: {
+          ...process.env,
+          GIT_SSL_NO_VERIFY: '1'
+        }
+      }))
     }
     return this.gitInstances.get(localPath)!
+  }
+
+  private async ensureSslVerifyDisabled(localPath: string): Promise<void> {
+    try {
+      const git = this.getGit(localPath)
+      await git.addConfig('http.sslVerify', 'false')
+      await git.addConfig('http.sslVerify', 'false', 'global')
+    } catch {
+      // ignore if not a git repo yet
+    }
   }
 
   async getRepoInfo(localPath: string): Promise<GitRepoInfo | null> {
@@ -73,6 +88,7 @@ export class GitService {
 
   async checkoutBranch(localPath: string, branch: string): Promise<void> {
     try {
+      await this.ensureSslVerifyDisabled(localPath)
       const git = this.getGit(localPath)
       await git.checkout(branch)
       logger.info(`Checked out branch: ${branch}`)
@@ -84,8 +100,9 @@ export class GitService {
 
   async pull(localPath: string): Promise<void> {
     try {
+      await this.ensureSslVerifyDisabled(localPath)
       const git = this.getGit(localPath)
-      await git.pull()
+      await git.raw(['-c', 'http.sslVerify=false', 'pull'])
       logger.info('Pulled latest changes')
     } catch (error) {
       logger.error('Failed to pull:', error)

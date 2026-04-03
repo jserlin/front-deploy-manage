@@ -176,7 +176,15 @@
       <div class="group-list">
         <div v-for="group in groups" :key="group.id" class="group-item">
           <div class="group-item-info">
-            <span :style="{ width: '14px', height: '14px', borderRadius: '3px', backgroundColor: group.color, display: 'inline-block', flexShrink: 0 }"></span>
+            <el-color-picker
+              v-if="editingGroupId === group.id"
+              v-model="editingGroupColor"
+              size="small"
+            />
+            <span
+              v-else
+              :style="{ width: '14px', height: '14px', borderRadius: '3px', backgroundColor: group.color, display: 'inline-block', flexShrink: 0 }"
+            ></span>
             <span v-if="editingGroupId !== group.id" class="group-item-name">{{ group.name }}</span>
             <el-input
               v-else
@@ -281,9 +289,17 @@ const filteredProjects = computed(() => {
   let result = projects.value
   
   if (searchText.value) {
-    result = result.filter(p => 
-      p.name.toLowerCase().includes(searchText.value.toLowerCase())
-    )
+    const keyword = searchText.value.toLowerCase()
+    result = result.filter(p => {
+      const name = (p.name || '').toLowerCase()
+      const localPath = (p.localPath || '').toLowerCase()
+      const description = (p.description || '').toLowerCase()
+      const gitBranch = (p.gitBranch || '').toLowerCase()
+      return name.includes(keyword)
+        || localPath.includes(keyword)
+        || description.includes(keyword)
+        || gitBranch.includes(keyword)
+    })
   }
   
   if (selectedGroup.value) {
@@ -298,6 +314,7 @@ const newGroupName = ref('')
 const newGroupColor = ref('#409EFF')
 const editingGroupId = ref<number | null>(null)
 const editingGroupName = ref('')
+const editingGroupColor = ref('#409EFF')
 
 const inlineGroupVisible = ref(false)
 const inlineGroupName = ref('')
@@ -450,6 +467,7 @@ const addGroup = async () => {
 const startEditGroup = (group: any) => {
   editingGroupId.value = group.id
   editingGroupName.value = group.name
+  editingGroupColor.value = group.color
 }
 
 const saveGroupEdit = async (group: any) => {
@@ -457,13 +475,13 @@ const saveGroupEdit = async (group: any) => {
   try {
     const result = await window.electronAPI.group.update(group.id, JSON.parse(JSON.stringify({
       name: editingGroupName.value.trim(),
-      color: group.color,
+      color: editingGroupColor.value,
       sortOrder: group.sortOrder
     })))
     if (result.success) {
       editingGroupId.value = null
       editingGroupName.value = ''
-      await fetchGroups()
+      await Promise.all([fetchGroups(), projectStore.fetchProjects()])
       ElMessage.success('更新成功')
     } else {
       ElMessage.error(result.error || '更新失败')

@@ -10023,9 +10023,22 @@ class GitService {
   }
   getGit(localPath) {
     if (!this.gitInstances.has(localPath)) {
-      this.gitInstances.set(localPath, simpleGit(localPath));
+      this.gitInstances.set(localPath, simpleGit(localPath, {
+        env: {
+          ...process.env,
+          GIT_SSL_NO_VERIFY: "1"
+        }
+      }));
     }
     return this.gitInstances.get(localPath);
+  }
+  async ensureSslVerifyDisabled(localPath) {
+    try {
+      const git = this.getGit(localPath);
+      await git.addConfig("http.sslVerify", "false");
+      await git.addConfig("http.sslVerify", "false", "global");
+    } catch {
+    }
   }
   async getRepoInfo(localPath) {
     var _a2, _b;
@@ -10062,6 +10075,7 @@ class GitService {
   }
   async checkoutBranch(localPath, branch) {
     try {
+      await this.ensureSslVerifyDisabled(localPath);
       const git = this.getGit(localPath);
       await git.checkout(branch);
       logger.info(`Checked out branch: ${branch}`);
@@ -10072,8 +10086,9 @@ class GitService {
   }
   async pull(localPath) {
     try {
+      await this.ensureSslVerifyDisabled(localPath);
       const git = this.getGit(localPath);
-      await git.pull();
+      await git.raw(["-c", "http.sslVerify=false", "pull"]);
       logger.info("Pulled latest changes");
     } catch (error) {
       logger.error("Failed to pull:", error);
@@ -10772,7 +10787,17 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("serverCredential:testConnection", async (event, id) => {
     try {
-      const credential = db.get("SELECT * FROM server_credentials WHERE id=?", [id]);
+      const c = db.get("SELECT * FROM server_credentials WHERE id=?", [id]);
+      if (!c) return { success: false, message: "凭证不存在" };
+      const credential = {
+        host: c.host,
+        port: c.port,
+        username: c.username,
+        authType: c.auth_type || "password",
+        password: c.password || "",
+        privateKey: c.private_key || "",
+        passphrase: c.passphrase || ""
+      };
       const result = await sshService.testConnection(credential);
       return result;
     } catch (error) {
@@ -10901,18 +10926,22 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("deploy:svn", async (event, config) => {
     try {
-      const { project, svnCredential, svnPath, commitMessage, backupEnabled } = config;
+      const { project, svnCredential, svnPath, commitMessage, backupEnabled, needBuild = true } = config;
       await gitService.pull(project.localPath);
       if (config.branch) {
         await gitService.checkoutBranch(project.localPath, config.branch);
       }
-      event.sender.send("deploy:progress", { stage: "building", message: "开始构建..." });
-      const buildResult = await buildService.build(project, (log2) => {
-        event.sender.send("deploy:progress", { stage: "building", log: log2 });
-      });
-      if (!buildResult.success) throw new Error(buildResult.error || "构建失败");
-      const isValid = await buildService.validateOutput(project);
-      if (!isValid) throw new Error("构建产物验证失败");
+      if (needBuild) {
+        event.sender.send("deploy:progress", { stage: "building", message: "开始构建..." });
+        const buildResult = await buildService.build(project, (log2) => {
+          event.sender.send("deploy:progress", { stage: "building", log: log2 });
+        });
+        if (!buildResult.success) throw new Error(buildResult.error || "构建失败");
+        const isValid = await buildService.validateOutput(project);
+        if (!isValid) throw new Error("构建产物验证失败");
+      } else {
+        event.sender.send("deploy:progress", { stage: "building", message: "跳过构建，使用已有产物..." });
+      }
       if (backupEnabled) {
         event.sender.send("deploy:progress", { stage: "backup", message: "备份 SVN 目录..." });
         await svnService.backup(svnPath, svnCredential);
@@ -10934,18 +10963,22 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("deploy:server", async (event, config) => {
     try {
-      const { project, serverCredential, remotePath, backupEnabled } = config;
+      const { project, serverCredential, remotePath, backupEnabled, needBuild = true } = config;
       await gitService.pull(project.localPath);
       if (config.branch) {
         await gitService.checkoutBranch(project.localPath, config.branch);
       }
-      event.sender.send("deploy:progress", { stage: "building", message: "开始构建..." });
-      const buildResult = await buildService.build(project, (log2) => {
-        event.sender.send("deploy:progress", { stage: "building", log: log2 });
-      });
-      if (!buildResult.success) throw new Error(buildResult.error || "构建失败");
-      const isValid = await buildService.validateOutput(project);
-      if (!isValid) throw new Error("构建产物验证失败");
+      if (needBuild) {
+        event.sender.send("deploy:progress", { stage: "building", message: "开始构建..." });
+        const buildResult = await buildService.build(project, (log2) => {
+          event.sender.send("deploy:progress", { stage: "building", log: log2 });
+        });
+        if (!buildResult.success) throw new Error(buildResult.error || "构建失败");
+        const isValid = await buildService.validateOutput(project);
+        if (!isValid) throw new Error("构建产物验证失败");
+      } else {
+        event.sender.send("deploy:progress", { stage: "building", message: "跳过构建，使用已有产物..." });
+      }
       if (backupEnabled) {
         event.sender.send("deploy:progress", { stage: "backup", message: "备份远程目录..." });
         await sshService.execCommand(serverCredential, `mv ${remotePath} ${remotePath}_backup_${Date.now()}`);
@@ -10969,16 +11002,20 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("deploy:mixed", async (event, config) => {
     try {
-      const { project, targets, branch } = config;
+      const { project, targets, branch, needBuild = true } = config;
       await gitService.pull(project.localPath);
       if (branch) await gitService.checkoutBranch(project.localPath, branch);
-      event.sender.send("deploy:progress", { stage: "building", message: "开始构建..." });
-      const buildResult = await buildService.build(project, (log2) => {
-        event.sender.send("deploy:progress", { stage: "building", log: log2 });
-      });
-      if (!buildResult.success) throw new Error(buildResult.error || "构建失败");
-      const isValid = await buildService.validateOutput(project);
-      if (!isValid) throw new Error("构建产物验证失败");
+      if (needBuild) {
+        event.sender.send("deploy:progress", { stage: "building", message: "开始构建..." });
+        const buildResult = await buildService.build(project, (log2) => {
+          event.sender.send("deploy:progress", { stage: "building", log: log2 });
+        });
+        if (!buildResult.success) throw new Error(buildResult.error || "构建失败");
+        const isValid = await buildService.validateOutput(project);
+        if (!isValid) throw new Error("构建产物验证失败");
+      } else {
+        event.sender.send("deploy:progress", { stage: "building", message: "跳过构建，使用已有产物..." });
+      }
       for (const target of targets) {
         const outputPath = require$$1__namespace.join(project.localPath, project.outputDir);
         if (target.type === "svn") {

@@ -274,7 +274,17 @@ export function registerIpcHandlers(database: DatabaseManager) {
 
   ipcMain.handle('serverCredential:testConnection', async (event, id: number) => {
     try {
-      const credential = db.get('SELECT * FROM server_credentials WHERE id=?', [id]) as any
+      const c = db.get('SELECT * FROM server_credentials WHERE id=?', [id]) as any
+      if (!c) return { success: false, message: '凭证不存在' }
+      const credential = {
+        host: c.host,
+        port: c.port,
+        username: c.username,
+        authType: c.auth_type || 'password',
+        password: c.password || '',
+        privateKey: c.private_key || '',
+        passphrase: c.passphrase || ''
+      }
       const result = await sshService.testConnection(credential)
       return result
     } catch (error: any) {
@@ -421,18 +431,22 @@ export function registerIpcHandlers(database: DatabaseManager) {
 
   ipcMain.handle('deploy:svn', async (event, config) => {
     try {
-      const { project, svnCredential, svnPath, commitMessage, backupEnabled } = config
+      const { project, svnCredential, svnPath, commitMessage, backupEnabled, needBuild = true } = config
       await gitService.pull(project.localPath)
       if (config.branch) {
         await gitService.checkoutBranch(project.localPath, config.branch)
       }
-      event.sender.send('deploy:progress', { stage: 'building', message: '开始构建...' })
-      const buildResult = await buildService.build(project, (log: string) => {
-        event.sender.send('deploy:progress', { stage: 'building', log })
-      })
-      if (!buildResult.success) throw new Error(buildResult.error || '构建失败')
-      const isValid = await buildService.validateOutput(project)
-      if (!isValid) throw new Error('构建产物验证失败')
+      if (needBuild) {
+        event.sender.send('deploy:progress', { stage: 'building', message: '开始构建...' })
+        const buildResult = await buildService.build(project, (log: string) => {
+          event.sender.send('deploy:progress', { stage: 'building', log })
+        })
+        if (!buildResult.success) throw new Error(buildResult.error || '构建失败')
+        const isValid = await buildService.validateOutput(project)
+        if (!isValid) throw new Error('构建产物验证失败')
+      } else {
+        event.sender.send('deploy:progress', { stage: 'building', message: '跳过构建，使用已有产物...' })
+      }
       if (backupEnabled) {
         event.sender.send('deploy:progress', { stage: 'backup', message: '备份 SVN 目录...' })
         await svnService.backup(svnPath, svnCredential)
@@ -453,18 +467,22 @@ export function registerIpcHandlers(database: DatabaseManager) {
 
   ipcMain.handle('deploy:server', async (event, config) => {
     try {
-      const { project, serverCredential, remotePath, backupEnabled } = config
+      const { project, serverCredential, remotePath, backupEnabled, needBuild = true } = config
       await gitService.pull(project.localPath)
       if (config.branch) {
         await gitService.checkoutBranch(project.localPath, config.branch)
       }
-      event.sender.send('deploy:progress', { stage: 'building', message: '开始构建...' })
-      const buildResult = await buildService.build(project, (log: string) => {
-        event.sender.send('deploy:progress', { stage: 'building', log })
-      })
-      if (!buildResult.success) throw new Error(buildResult.error || '构建失败')
-      const isValid = await buildService.validateOutput(project)
-      if (!isValid) throw new Error('构建产物验证失败')
+      if (needBuild) {
+        event.sender.send('deploy:progress', { stage: 'building', message: '开始构建...' })
+        const buildResult = await buildService.build(project, (log: string) => {
+          event.sender.send('deploy:progress', { stage: 'building', log })
+        })
+        if (!buildResult.success) throw new Error(buildResult.error || '构建失败')
+        const isValid = await buildService.validateOutput(project)
+        if (!isValid) throw new Error('构建产物验证失败')
+      } else {
+        event.sender.send('deploy:progress', { stage: 'building', message: '跳过构建，使用已有产物...' })
+      }
       if (backupEnabled) {
         event.sender.send('deploy:progress', { stage: 'backup', message: '备份远程目录...' })
         await sshService.execCommand(serverCredential, `mv ${remotePath} ${remotePath}_backup_${Date.now()}`)
@@ -487,16 +505,20 @@ export function registerIpcHandlers(database: DatabaseManager) {
 
   ipcMain.handle('deploy:mixed', async (event, config) => {
     try {
-      const { project, targets, branch } = config
+      const { project, targets, branch, needBuild = true } = config
       await gitService.pull(project.localPath)
       if (branch) await gitService.checkoutBranch(project.localPath, branch)
-      event.sender.send('deploy:progress', { stage: 'building', message: '开始构建...' })
-      const buildResult = await buildService.build(project, (log: string) => {
-        event.sender.send('deploy:progress', { stage: 'building', log })
-      })
-      if (!buildResult.success) throw new Error(buildResult.error || '构建失败')
-      const isValid = await buildService.validateOutput(project)
-      if (!isValid) throw new Error('构建产物验证失败')
+      if (needBuild) {
+        event.sender.send('deploy:progress', { stage: 'building', message: '开始构建...' })
+        const buildResult = await buildService.build(project, (log: string) => {
+          event.sender.send('deploy:progress', { stage: 'building', log })
+        })
+        if (!buildResult.success) throw new Error(buildResult.error || '构建失败')
+        const isValid = await buildService.validateOutput(project)
+        if (!isValid) throw new Error('构建产物验证失败')
+      } else {
+        event.sender.send('deploy:progress', { stage: 'building', message: '跳过构建，使用已有产物...' })
+      }
       for (const target of targets) {
         const outputPath = path.join(project.localPath, project.outputDir)
         if (target.type === 'svn') {
