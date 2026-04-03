@@ -227,11 +227,12 @@ const submitForm = async () => {
   try {
     await formRef.value.validate()
     
+    const data = JSON.parse(JSON.stringify(formData.value))
     let result
     if (isEdit.value && editingId.value) {
-      result = await window.electronAPI.svnCredential.update(editingId.value, formData.value)
+      result = await window.electronAPI.svnCredential.update(editingId.value, data)
     } else {
-      result = await window.electronAPI.svnCredential.create(formData.value)
+      result = await window.electronAPI.svnCredential.create(data)
     }
     
     if (result.success) {

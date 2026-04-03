@@ -10641,16 +10641,41 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("serverCredential:getAll", async () => {
     try {
-      const credentials = db.all("SELECT * FROM server_credentials ORDER BY created_at DESC");
-      return { success: true, data: credentials };
+      const rows = db.all("server_credentials");
+      const mapped = rows.map((c) => ({
+        id: c.id,
+        name: c.name,
+        host: c.host,
+        port: c.port,
+        username: c.username,
+        authType: c.auth_type || "password",
+        environment: c.environment || "dev",
+        description: c.description || "",
+        createdAt: c.created_at,
+        updatedAt: c.updated_at
+      }));
+      return { success: true, data: mapped };
     } catch (error) {
       return { success: false, error: error.message };
     }
   });
   require$$0$6.ipcMain.handle("serverCredential:getById", async (event, id) => {
     try {
-      const credential = db.get("SELECT * FROM server_credentials WHERE id=?", [id]);
-      return { success: true, data: credential };
+      const c = db.get("SELECT * FROM server_credentials WHERE id=?", [id]);
+      if (!c) return { success: false, error: "Credential not found" };
+      const mapped = {
+        id: c.id,
+        name: c.name,
+        host: c.host,
+        port: c.port,
+        username: c.username,
+        authType: c.auth_type || "password",
+        environment: c.environment || "dev",
+        description: c.description || "",
+        createdAt: c.created_at,
+        updatedAt: c.updated_at
+      };
+      return { success: true, data: mapped };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -10727,16 +10752,37 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("svnCredential:getAll", async () => {
     try {
-      const credentials = db.all("SELECT * FROM svn_credentials ORDER BY created_at DESC");
-      return { success: true, data: credentials };
+      const rows = db.all("svn_credentials");
+      const mapped = rows.map((c) => ({
+        id: c.id,
+        name: c.name,
+        svnUrl: c.svn_url || "",
+        username: c.username,
+        environment: c.environment || "dev",
+        description: c.description || "",
+        createdAt: c.created_at,
+        updatedAt: c.updated_at
+      }));
+      return { success: true, data: mapped };
     } catch (error) {
       return { success: false, error: error.message };
     }
   });
   require$$0$6.ipcMain.handle("svnCredential:getById", async (event, id) => {
     try {
-      const credential = db.get("SELECT * FROM svn_credentials WHERE id=?", [id]);
-      return { success: true, data: credential };
+      const c = db.get("SELECT * FROM svn_credentials WHERE id=?", [id]);
+      if (!c) return { success: false, error: "Credential not found" };
+      const mapped = {
+        id: c.id,
+        name: c.name,
+        svnUrl: c.svn_url || "",
+        username: c.username,
+        environment: c.environment || "dev",
+        description: c.description || "",
+        createdAt: c.created_at,
+        updatedAt: c.updated_at
+      };
+      return { success: true, data: mapped };
     } catch (error) {
       return { success: false, error: error.message };
     }
