@@ -13,7 +13,7 @@
       <el-table-column prop="projectName" label="项目" width="150" />
       <el-table-column prop="deployType" label="发布类型" width="120">
         <template #default="{ row }">
-          <el-tag>{{ getDeployTypeLabel(row.deploy_type) }}</el-tag>
+          <el-tag>{{ getDeployTypeLabel(row.deployType) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="description" label="描述" />
@@ -189,21 +189,21 @@ const editTemplate = (template: any) => {
   editingId.value = template.id
   formData.value = {
     name: template.name,
-    projectId: template.project_id,
-    deployType: template.deploy_type,
-    svnCredentialId: template.svn_credential_id,
-    svnPath: template.svn_path || '',
-    serverCredentialId: template.server_credential_id,
-    remotePath: template.remote_path || '',
+    projectId: template.projectId,
+    deployType: template.deployType,
+    svnCredentialId: template.svnCredentialId,
+    svnPath: template.svnPath || '',
+    serverCredentialId: template.serverCredentialId,
+    remotePath: template.remotePath || '',
     commitMessage: '',
-    backupEnabled: template.backup_enabled === 1,
+    backupEnabled: template.backupEnabled === true || template.backupEnabled === 1,
     description: template.description || ''
   }
   dialogVisible.value = true
 }
 
 const useTemplate = (template: any) => {
-  const project = projects.value.find((p: any) => p.id === template.project_id)
+  const project = projects.value.find((p: any) => p.id === template.projectId)
   if (project) {
     projectStore.setCurrentProject(project)
     router.push('/deploy')
@@ -234,11 +234,12 @@ const deleteTemplate = async (template: any) => {
 const submitForm = async () => {
   try {
     await formRef.value.validate()
+    const data = JSON.parse(JSON.stringify(formData.value))
     let result
     if (isEdit.value && editingId.value) {
-      result = await window.electronAPI.template.update(editingId.value, formData.value)
+      result = await window.electronAPI.template.update(editingId.value, data)
     } else {
-      result = await window.electronAPI.template.create(formData.value)
+      result = await window.electronAPI.template.create(data)
     }
     if (result.success) {
       ElMessage.success(isEdit.value ? '更新成功' : '创建成功')

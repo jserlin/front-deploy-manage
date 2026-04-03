@@ -518,21 +518,26 @@ export function registerIpcHandlers(database: DatabaseManager) {
 
   ipcMain.handle('deploy:getHistory', async (event, projectId?: number) => {
     try {
-      if (projectId) {
-        const history = db.all(`
-          SELECT h.*, p.name as project_name FROM deploy_history h
-          LEFT JOIN projects p ON h.project_id = p.id
-          WHERE h.project_id = ? ORDER BY h.created_at DESC LIMIT 50
-        `, [projectId])
-        return { success: true, data: history }
-      } else {
-        const history = db.all(`
-          SELECT h.*, p.name as project_name FROM deploy_history h
-          LEFT JOIN projects p ON h.project_id = p.id
-          ORDER BY h.created_at DESC LIMIT 50
-        `)
-        return { success: true, data: history }
-      }
+      const rows = projectId
+        ? db.all('deploy_history').filter((h: any) => h.project_id === projectId)
+        : db.all('deploy_history')
+      const projects = db.all('projects') as any[]
+      const projectMap = new Map(projects.map((p: any) => [p.id, p.name]))
+      const mapped = rows.slice(0, 50).map((h: any) => ({
+        id: h.id,
+        projectId: h.project_id,
+        projectName: projectMap.get(h.project_id) || '',
+        deployType: h.deploy_type,
+        gitBranch: h.git_branch,
+        gitCommit: h.git_commit,
+        status: h.status,
+        startedAt: h.started_at,
+        finishedAt: h.finished_at,
+        log: h.log || '',
+        createdAt: h.created_at,
+        updatedAt: h.updated_at
+      }))
+      return { success: true, data: mapped }
     } catch (error: any) {
       return { success: false, error: error.message }
     }
@@ -542,8 +547,27 @@ export function registerIpcHandlers(database: DatabaseManager) {
 
   ipcMain.handle('template:getAll', async () => {
     try {
-      const templates = db.all('SELECT * FROM deploy_templates ORDER BY created_at DESC')
-      return { success: true, data: templates }
+      const rows = db.all('deploy_templates')
+      const projects = db.all('projects') as any[]
+      const projectMap = new Map(projects.map((p: any) => [p.id, p.name]))
+      const mapped = rows.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        projectId: t.project_id,
+        projectName: projectMap.get(t.project_id) || '',
+        deployType: t.deploy_type,
+        serverCredentialId: t.server_credential_id,
+        svnCredentialId: t.svn_credential_id,
+        remotePath: t.remote_path || '',
+        svnPath: t.svn_path || '',
+        backupEnabled: t.backup_enabled === 1,
+        preCommand: t.pre_command || '',
+        postCommand: t.post_command || '',
+        description: t.description || '',
+        createdAt: t.created_at,
+        updatedAt: t.updated_at
+      }))
+      return { success: true, data: mapped }
     } catch (error: any) {
       return { success: false, error: error.message }
     }
@@ -551,8 +575,28 @@ export function registerIpcHandlers(database: DatabaseManager) {
 
   ipcMain.handle('template:getById', async (event, id: number) => {
     try {
-      const template = db.get('SELECT * FROM deploy_templates WHERE id=?', [id])
-      return { success: true, data: template }
+      const t = db.get('SELECT * FROM deploy_templates WHERE id=?', [id]) as any
+      if (!t) return { success: false, error: 'Template not found' }
+      const projects = db.all('projects') as any[]
+      const projectMap = new Map(projects.map((p: any) => [p.id, p.name]))
+      const mapped = {
+        id: t.id,
+        name: t.name,
+        projectId: t.project_id,
+        projectName: projectMap.get(t.project_id) || '',
+        deployType: t.deploy_type,
+        serverCredentialId: t.server_credential_id,
+        svnCredentialId: t.svn_credential_id,
+        remotePath: t.remote_path || '',
+        svnPath: t.svn_path || '',
+        backupEnabled: t.backup_enabled === 1,
+        preCommand: t.pre_command || '',
+        postCommand: t.post_command || '',
+        description: t.description || '',
+        createdAt: t.created_at,
+        updatedAt: t.updated_at
+      }
+      return { success: true, data: mapped }
     } catch (error: any) {
       return { success: false, error: error.message }
     }

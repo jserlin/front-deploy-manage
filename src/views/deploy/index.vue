@@ -261,13 +261,14 @@ const startDeploy = async () => {
       throw new Error('项目不存在')
     }
 
+    const plainProject = JSON.parse(JSON.stringify(project))
     let result
     
     if (deployConfig.value.deployType === 'svn') {
       const svnCred = svnCredentials.value.find(c => c.id === deployConfig.value.svnCredentialId)
       result = await window.electronAPI.deploy.svn({
-        project,
-        svnCredential: svnCred,
+        project: plainProject,
+        svnCredential: svnCred ? JSON.parse(JSON.stringify(svnCred)) : null,
         svnPath: deployConfig.value.svnPath,
         commitMessage: deployConfig.value.commitMessage,
         backupEnabled: deployConfig.value.backupEnabled,
@@ -276,8 +277,8 @@ const startDeploy = async () => {
     } else if (deployConfig.value.deployType === 'server') {
       const serverCred = serverCredentials.value.find(c => c.id === deployConfig.value.serverCredentialId)
       result = await window.electronAPI.deploy.server({
-        project,
-        serverCredential: serverCred,
+        project: plainProject,
+        serverCredential: serverCred ? JSON.parse(JSON.stringify(serverCred)) : null,
         remotePath: deployConfig.value.remotePath,
         backupEnabled: deployConfig.value.backupEnabled,
         branch: deployConfig.value.branch
@@ -287,18 +288,18 @@ const startDeploy = async () => {
       const serverCred = serverCredentials.value.find(c => c.id === deployConfig.value.serverCredentialId)
       
       result = await window.electronAPI.deploy.mixed({
-        project,
+        project: plainProject,
         branch: deployConfig.value.branch,
         targets: [
           {
             type: 'svn',
-            credential: svnCred,
+            credential: svnCred ? JSON.parse(JSON.stringify(svnCred)) : null,
             svnPath: deployConfig.value.svnPath,
             commitMessage: deployConfig.value.commitMessage
           },
           {
             type: 'server',
-            credential: serverCred,
+            credential: serverCred ? JSON.parse(JSON.stringify(serverCred)) : null,
             remotePath: deployConfig.value.remotePath
           }
         ]
