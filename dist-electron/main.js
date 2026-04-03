@@ -11224,6 +11224,21 @@ function registerIpcHandlers(database2) {
       return { success: false, error: error.message };
     }
   });
+  require$$0$6.ipcMain.handle("config:selectJsonFile", async () => {
+    try {
+      const result = await require$$0$6.dialog.showOpenDialog({
+        title: "选择配置文件",
+        properties: ["openFile"],
+        filters: [{ name: "JSON", extensions: ["json"] }]
+      });
+      if (result.filePaths && result.filePaths.length > 0) {
+        return { success: true, path: result.filePaths[0] };
+      }
+      return { success: false };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
   require$$0$6.ipcMain.handle("config:getDbPath", async () => {
     return { success: true, path: require$$1.join(require$$0$6.app.getPath("userData"), "deploy-manager.json") };
   });

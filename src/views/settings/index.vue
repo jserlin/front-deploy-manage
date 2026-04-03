@@ -140,7 +140,7 @@ const importConfig = async () => {
     importing.value = true
     
     // 选择文件
-    const fileResult = await window.electronAPI.config.selectFile()
+    const fileResult = await window.electronAPI.config.selectJsonFile()
     if (!fileResult.success || !fileResult.path) {
       importing.value = false
       return

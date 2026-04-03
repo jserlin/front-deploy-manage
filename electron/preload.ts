@@ -75,6 +75,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     export: (includePasswords: boolean) => ipcRenderer.invoke('config:export', includePasswords),
     import: (filePath: string) => ipcRenderer.invoke('config:import', filePath),
     selectFile: () => ipcRenderer.invoke('config:selectFile'),
+    selectJsonFile: () => ipcRenderer.invoke('config:selectJsonFile'),
     getDbPath: () => ipcRenderer.invoke('config:getDbPath'),
     clearAll: () => ipcRenderer.invoke('config:clearAll'),
     openDataDir: () => ipcRenderer.invoke('config:openDataDir')

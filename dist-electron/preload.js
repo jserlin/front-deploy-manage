@@ -67,6 +67,7 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
     export: (includePasswords) => electron.ipcRenderer.invoke("config:export", includePasswords),
     import: (filePath) => electron.ipcRenderer.invoke("config:import", filePath),
     selectFile: () => electron.ipcRenderer.invoke("config:selectFile"),
+    selectJsonFile: () => electron.ipcRenderer.invoke("config:selectJsonFile"),
     getDbPath: () => electron.ipcRenderer.invoke("config:getDbPath"),
     clearAll: () => electron.ipcRenderer.invoke("config:clearAll"),
     openDataDir: () => electron.ipcRenderer.invoke("config:openDataDir")

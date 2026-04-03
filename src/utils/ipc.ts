@@ -61,6 +61,7 @@ interface ElectronAPI {
     export: (includePasswords: boolean) => Promise<any>
     import: (filePath: string) => Promise<any>
     selectFile: () => Promise<any>
+    selectJsonFile: () => Promise<any>
     getDbPath: () => Promise<any>
     clearAll: () => Promise<any>
     openDataDir: () => Promise<any>

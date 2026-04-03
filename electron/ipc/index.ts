@@ -717,6 +717,22 @@ export function registerIpcHandlers(database: DatabaseManager) {
     }
   })
 
+  ipcMain.handle('config:selectJsonFile', async () => {
+    try {
+      const result = await dialog.showOpenDialog({
+        title: '选择配置文件',
+        properties: ['openFile'],
+        filters: [{ name: 'JSON', extensions: ['json'] }]
+      })
+      if (result.filePaths && result.filePaths.length > 0) {
+        return { success: true, path: result.filePaths[0] }
+      }
+      return { success: false }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
   ipcMain.handle('config:getDbPath', async () => {
     return { success: true, path: join(app.getPath('userData'), 'deploy-manager.json') }
   })
