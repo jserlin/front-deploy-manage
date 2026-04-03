@@ -10485,7 +10485,9 @@ class SVNService {
   async backup(svnPath, credential) {
     try {
       const password = credential.password ? CryptoUtil.decrypt(credential.password) : "";
-      const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
+      const now = /* @__PURE__ */ new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
       const backupPath = `${svnPath}_backup_${timestamp}`;
       const command = `svn copy --username "${credential.username}" --password "${password}" --non-interactive -m "Backup before deployment" "${svnPath}" "${backupPath}"`;
       await this.execCommand(command, { timeout: 3e4 });
@@ -11110,7 +11112,10 @@ function registerIpcHandlers(database2) {
       }
       if (backupEnabled) {
         event.sender.send("deploy:progress", { stage: "backup", message: "备份远程目录..." });
-        await sshService.execCommand(serverCredential, `mv ${remotePath} ${remotePath}_backup_${Date.now()}`);
+        const now = /* @__PURE__ */ new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        const backupTs = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+        await sshService.execCommand(serverCredential, `mv ${remotePath} ${remotePath}_backup_${backupTs}`);
       }
       event.sender.send("deploy:progress", { stage: "uploading", message: "上传到服务器..." });
       const outputPath = require$$1__namespace.join(project.localPath, project.outputDir);

@@ -516,7 +516,10 @@ export function registerIpcHandlers(database: DatabaseManager) {
       }
       if (backupEnabled) {
         event.sender.send('deploy:progress', { stage: 'backup', message: '备份远程目录...' })
-        await sshService.execCommand(serverCredential, `mv ${remotePath} ${remotePath}_backup_${Date.now()}`)
+        const now = new Date()
+        const pad = (n: number) => String(n).padStart(2, '0')
+        const backupTs = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+        await sshService.execCommand(serverCredential, `mv ${remotePath} ${remotePath}_backup_${backupTs}`)
       }
       event.sender.send('deploy:progress', { stage: 'uploading', message: '上传到服务器...' })
       const outputPath = path.join(project.localPath, project.outputDir)

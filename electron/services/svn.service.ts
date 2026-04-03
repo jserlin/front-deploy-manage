@@ -120,7 +120,9 @@ export class SVNService {
     ): Promise<string> {
       try {
         const password = credential.password ? CryptoUtil.decrypt(credential.password) : ''
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+        const now = new Date()
+        const pad = (n: number) => String(n).padStart(2, '0')
+        const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
         const backupPath = `${svnPath}_backup_${timestamp}`
         
         const command = `svn copy --username "${credential.username}" --password "${password}" --non-interactive -m "Backup before deployment" "${svnPath}" "${backupPath}"`
