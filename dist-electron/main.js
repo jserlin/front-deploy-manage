@@ -10488,13 +10488,28 @@ function registerIpcHandlers(database2) {
   const buildService = new BuildService();
   require$$0$6.ipcMain.handle("project:getAll", async () => {
     try {
-      const projects = db.all(`
-        SELECT p.*, g.name as group_name, g.color as group_color
-        FROM projects p
-        LEFT JOIN groups g ON p.group_id = g.id
-        ORDER BY p.updated_at DESC
-      `);
-      return { success: true, data: projects };
+      const projects = db.all("projects");
+      const groups = db.all("groups");
+      const groupMap = new Map(groups.map((g) => [g.id, g]));
+      const mapped = projects.map((p) => {
+        const group = p.group_id ? groupMap.get(p.group_id) : null;
+        return {
+          id: p.id,
+          name: p.name,
+          localPath: p.local_path,
+          gitRepo: p.git_repo || "",
+          gitBranch: p.git_branch || "main",
+          buildCommand: p.build_command || "",
+          outputDir: p.output_dir || "dist",
+          groupId: p.group_id || null,
+          groupName: group ? group.name : "",
+          groupColor: group ? group.color : "",
+          description: p.description || "",
+          createdAt: p.created_at,
+          updatedAt: p.updated_at
+        };
+      });
+      return { success: true, data: mapped };
     } catch (error) {
       console.error("Failed to get projects:", error);
       return { success: false, error: error.message };
@@ -10502,13 +10517,26 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("project:getById", async (event, id) => {
     try {
-      const project = db.get(`
-        SELECT p.*, g.name as group_name, g.color as group_color
-        FROM projects p
-        LEFT JOIN groups g ON p.group_id = g.id
-        WHERE p.id = ?
-      `, [id]);
-      return { success: true, data: project };
+      const p = db.get("SELECT * FROM projects WHERE id=?", [id]);
+      if (!p) return { success: false, error: "Project not found" };
+      const groups = db.all("groups");
+      const group = p.group_id ? groups.find((g) => g.id === p.group_id) : null;
+      const mapped = {
+        id: p.id,
+        name: p.name,
+        localPath: p.local_path,
+        gitRepo: p.git_repo || "",
+        gitBranch: p.git_branch || "main",
+        buildCommand: p.build_command || "",
+        outputDir: p.output_dir || "dist",
+        groupId: p.group_id || null,
+        groupName: group ? group.name : "",
+        groupColor: group ? group.color : "",
+        description: p.description || "",
+        createdAt: p.created_at,
+        updatedAt: p.updated_at
+      };
+      return { success: true, data: mapped };
     } catch (error) {
       return { success: false, error: error.message };
     }
