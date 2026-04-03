@@ -279,11 +279,13 @@ const submitForm = async () => {
   try {
     await formRef.value.validate()
     
+    const data = JSON.parse(JSON.stringify(formData.value))
+    
     if (isEdit.value && editingId.value) {
-      await projectStore.updateProject(editingId.value, formData.value)
+      await projectStore.updateProject(editingId.value, data)
       ElMessage.success('更新成功')
     } else {
-      await projectStore.createProject(formData.value)
+      await projectStore.createProject(data)
       ElMessage.success('添加成功')
     }
     

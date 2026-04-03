@@ -109,8 +109,6 @@ body {
 }
 
 .sidebar {
-  background: #001529;
-  color: #fff;
   overflow-y: auto;
 }
 
@@ -134,5 +132,6 @@ body {
   background: #f0f2f5;
   padding: 20px;
   overflow-y: auto;
+  min-height: 100vh;
 }
 </style>
