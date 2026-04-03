@@ -162,11 +162,19 @@
         </div>
 
         <div v-if="deployProgress.progress" class="upload-progress">
-          <div>文件: {{ deployProgress.progress.filename }}</div>
-          <el-progress
-            :percentage="deployProgress.progress.percent"
-            :format="() => `${deployProgress.progress.transferred} / ${deployProgress.progress.total}`"
-          />
+          <div class="progress-file-count" v-if="deployProgress.progress.totalFiles">
+            <span>文件: {{ deployProgress.progress.fileCount || 0 }} / {{ deployProgress.progress.totalFiles }}</span>
+            <el-progress
+              :percentage="Math.round(((deployProgress.progress.fileCount || 0) / deployProgress.progress.totalFiles) * 100)"
+              :stroke-width="18"
+              :text-inside="true"
+              style="margin-top: 6px"
+            />
+          </div>
+          <div class="progress-current-file">
+            <span>当前: {{ deployProgress.progress.filename }}</span>
+            <span>{{ deployProgress.progress.transferred }} / {{ deployProgress.progress.total }}</span>
+          </div>
         </div>
 
         <div v-if="deployLogs.length" class="deploy-logs">
@@ -342,7 +350,8 @@ const getActiveStep = (stage: string) => {
     building: 2,
     uploading: 3,
     completed: 4,
-    failed: 4
+    failed: 4,
+    cancelled: 4
   }
   return steps[stage] || 0
 }
@@ -350,6 +359,7 @@ const getActiveStep = (stage: string) => {
 const getProgressType = (stage: string) => {
   if (stage === 'completed') return 'success'
   if (stage === 'failed') return 'danger'
+  if (stage === 'cancelled') return 'warning'
   if (stage === 'building') return 'warning'
   return 'info'
 }
@@ -360,7 +370,8 @@ const getProgressLabel = (stage: string) => {
     building: '构建中',
     uploading: '上传中',
     completed: '已完成',
-    failed: '失败'
+    failed: '失败',
+    cancelled: '已取消'
   }
   return labels[stage] || stage
 }
@@ -430,6 +441,25 @@ onUnmounted(() => {
 
       .upload-progress {
         margin-top: 20px;
+
+        .progress-file-count {
+          margin-bottom: 10px;
+
+          span {
+            font-weight: 500;
+            color: #303133;
+          }
+        }
+
+        .progress-current-file {
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 10px;
+          background: #f5f7fa;
+          border-radius: 4px;
+          font-size: 13px;
+          color: #606266;
+        }
       }
 
       .deploy-logs {

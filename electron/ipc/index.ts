@@ -430,8 +430,20 @@ export function registerIpcHandlers(database: DatabaseManager) {
   // ==================== 发布操作 ====================
 
   ipcMain.handle('deploy:svn', async (event, config) => {
+    sshService.resetAbort()
+    svnService.resetAbort()
     try {
-      const { project, svnCredential, svnPath, commitMessage, backupEnabled, needBuild = true } = config
+      const { project, svnPath, commitMessage, backupEnabled, needBuild = true } = config
+      const svnCredential = config.svnCredential
+      if (svnCredential && svnCredential.id) {
+        const c = db.get('SELECT * FROM svn_credentials WHERE id=?', [svnCredential.id]) as any
+        if (c) {
+          Object.assign(svnCredential, {
+            svnUrl: c.svn_url || '',
+            password: c.password || ''
+          })
+        }
+      }
       await gitService.pull(project.localPath)
       if (config.branch) {
         await gitService.checkoutBranch(project.localPath, config.branch)
@@ -460,14 +472,33 @@ export function registerIpcHandlers(database: DatabaseManager) {
       event.sender.send('deploy:progress', { stage: 'completed', message: '发布成功！' })
       return { success: true }
     } catch (error: any) {
-      event.sender.send('deploy:progress', { stage: 'failed', error: error.message })
+      const isCancelled = error.message === '发布已取消'
+      event.sender.send('deploy:progress', {
+        stage: isCancelled ? 'cancelled' : 'failed',
+        message: isCancelled ? '发布已取消' : undefined,
+        error: isCancelled ? undefined : error.message
+      })
       return { success: false, error: error.message }
     }
   })
 
   ipcMain.handle('deploy:server', async (event, config) => {
+    sshService.resetAbort()
+    svnService.resetAbort()
     try {
-      const { project, serverCredential, remotePath, backupEnabled, needBuild = true } = config
+      const { project, remotePath, backupEnabled, needBuild = true } = config
+      const serverCredential = config.serverCredential
+      if (serverCredential && serverCredential.id) {
+        const c = db.get('SELECT * FROM server_credentials WHERE id=?', [serverCredential.id]) as any
+        if (c) {
+          Object.assign(serverCredential, {
+            authType: c.auth_type || 'password',
+            password: c.password || '',
+            privateKey: c.private_key || '',
+            passphrase: c.passphrase || ''
+          })
+        }
+      }
       await gitService.pull(project.localPath)
       if (config.branch) {
         await gitService.checkoutBranch(project.localPath, config.branch)
@@ -498,14 +529,43 @@ export function registerIpcHandlers(database: DatabaseManager) {
       event.sender.send('deploy:progress', { stage: 'completed', message: '发布成功！' })
       return { success: true }
     } catch (error: any) {
-      event.sender.send('deploy:progress', { stage: 'failed', error: error.message })
+      const isCancelled = error.message === '发布已取消'
+      event.sender.send('deploy:progress', {
+        stage: isCancelled ? 'cancelled' : 'failed',
+        message: isCancelled ? '发布已取消' : undefined,
+        error: isCancelled ? undefined : error.message
+      })
       return { success: false, error: error.message }
     }
   })
 
   ipcMain.handle('deploy:mixed', async (event, config) => {
+    sshService.resetAbort()
+    svnService.resetAbort()
     try {
       const { project, targets, branch, needBuild = true } = config
+      for (const target of targets) {
+        if (target.type === 'server' && target.credential && target.credential.id) {
+          const c = db.get('SELECT * FROM server_credentials WHERE id=?', [target.credential.id]) as any
+          if (c) {
+            Object.assign(target.credential, {
+              authType: c.auth_type || 'password',
+              password: c.password || '',
+              privateKey: c.private_key || '',
+              passphrase: c.passphrase || ''
+            })
+          }
+        }
+        if (target.type === 'svn' && target.credential && target.credential.id) {
+          const c = db.get('SELECT * FROM svn_credentials WHERE id=?', [target.credential.id]) as any
+          if (c) {
+            Object.assign(target.credential, {
+              svnUrl: c.svn_url || '',
+              password: c.password || ''
+            })
+          }
+        }
+      }
       await gitService.pull(project.localPath)
       if (branch) await gitService.checkoutBranch(project.localPath, branch)
       if (needBuild) {
@@ -537,13 +597,20 @@ export function registerIpcHandlers(database: DatabaseManager) {
       event.sender.send('deploy:progress', { stage: 'completed', message: '混合发布成功！' })
       return { success: true }
     } catch (error: any) {
-      event.sender.send('deploy:progress', { stage: 'failed', error: error.message })
+      const isCancelled = error.message === '发布已取消'
+      event.sender.send('deploy:progress', {
+        stage: isCancelled ? 'cancelled' : 'failed',
+        message: isCancelled ? '发布已取消' : undefined,
+        error: isCancelled ? undefined : error.message
+      })
       return { success: false, error: error.message }
     }
   })
 
   ipcMain.handle('deploy:stop', async () => {
     buildService.stopBuild()
+    sshService.abort()
+    svnService.abort()
     return { success: true }
   })
 

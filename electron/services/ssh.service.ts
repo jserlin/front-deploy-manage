@@ -23,9 +23,34 @@ export interface UploadProgress {
   transferred: number
   total: number
   percent: number
+  fileCount: number
+  totalFiles: number
 }
 
 export class SSHService {
+  private currentConn: Client | null = null
+  private aborted = false
+
+  abort(): void {
+    this.aborted = true
+    if (this.currentConn) {
+      this.currentConn.end()
+      this.currentConn = null
+    }
+  }
+
+  isAborted(): boolean {
+    return this.aborted
+  }
+
+  resetAbort(): void {
+    this.aborted = false
+    this.currentConn = null
+  }
+
+  private checkAborted(): void {
+    if (this.aborted) throw new Error('发布已取消')
+  }
   async testConnection(credential: ServerCredential): Promise<{ success: boolean; message: string }> {
     const conn = new Client()
     
@@ -65,8 +90,10 @@ export class SSHService {
     remotePath: string,
     onProgress?: (progress: UploadProgress) => void
   ): Promise<void> {
+    this.checkAborted()
     return new Promise((resolve, reject) => {
       const conn = new Client()
+      this.currentConn = conn
       
       const config: any = {
         host: credential.host,
@@ -87,50 +114,76 @@ export class SSHService {
         conn.sftp((err, sftp) => {
           if (err) {
             conn.end()
+            this.currentConn = null
             reject(err)
             return
           }
 
-          this.uploadDirectoryRecursive(sftp, localPath, remotePath, onProgress)
-            .then(() => {
-              conn.end()
-              resolve()
-            })
-            .catch((uploadErr) => {
-              conn.end()
-              reject(uploadErr)
-            })
+          this.countFiles(localPath).then(totalFiles => {
+            const counters = { uploaded: 0, total: totalFiles }
+            return this.uploadDirectoryRecursive(sftp, localPath, remotePath, onProgress, counters)
+          }).then(() => {
+            conn.end()
+            this.currentConn = null
+            resolve()
+          }).catch((uploadErr) => {
+            conn.end()
+            this.currentConn = null
+            reject(uploadErr)
+          })
         })
       })
 
       conn.on('error', (err) => {
-        reject(err)
+        this.currentConn = null
+        if (this.aborted) {
+          reject(new Error('发布已取消'))
+        } else {
+          reject(err)
+        }
       })
 
       conn.connect(config)
     })
   }
 
+  private async countFiles(dirPath: string): Promise<number> {
+    let count = 0
+    const items = await fs.readdir(dirPath)
+    for (const item of items) {
+      const itemPath = path.join(dirPath, item)
+      const stats = await fs.stat(itemPath)
+      if (stats.isDirectory()) {
+        count += await this.countFiles(itemPath)
+      } else {
+        count++
+      }
+    }
+    return count
+  }
+
   private async uploadDirectoryRecursive(
     sftp: any,
     localPath: string,
     remotePath: string,
-    onProgress?: (progress: UploadProgress) => void
+    onProgress?: (progress: UploadProgress) => void,
+    counters?: { uploaded: number; total: number }
   ): Promise<void> {
-    // 创建远程目录
+    this.checkAborted()
     await this.mkdirRemote(sftp, remotePath)
 
     const items = await fs.readdir(localPath)
 
     for (const item of items) {
+      this.checkAborted()
       const localItemPath = path.join(localPath, item)
       const remoteItemPath = `${remotePath}/${item}`
       const stats = await fs.stat(localItemPath)
 
       if (stats.isDirectory()) {
-        await this.uploadDirectoryRecursive(sftp, localItemPath, remoteItemPath, onProgress)
+        await this.uploadDirectoryRecursive(sftp, localItemPath, remoteItemPath, onProgress, counters)
       } else {
-        await this.uploadFile(sftp, localItemPath, remoteItemPath, onProgress)
+        await this.uploadFile(sftp, localItemPath, remoteItemPath, onProgress, counters)
       }
     }
   }
@@ -139,7 +192,8 @@ export class SSHService {
     sftp: any,
     localPath: string,
     remotePath: string,
-    onProgress?: (progress: UploadProgress) => void
+    onProgress?: (progress: UploadProgress) => void,
+    counters?: { uploaded: number; total: number }
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const stats = fs.statSync(localPath)
@@ -154,7 +208,9 @@ export class SSHService {
               filename: path.basename(localPath),
               transferred,
               total,
-              percent: Math.round((transferred / total) * 100)
+              percent: Math.round((transferred / total) * 100),
+              fileCount: counters ? counters.uploaded + 1 : 1,
+              totalFiles: counters ? counters.total : 1
             })
           }
         }
@@ -162,6 +218,7 @@ export class SSHService {
         if (err) {
           reject(err)
         } else {
+          if (counters) counters.uploaded++
           resolve()
         }
       })
@@ -185,6 +242,7 @@ export class SSHService {
     credential: ServerCredential,
     command: string
   ): Promise<{ stdout: string; stderr: string; code: number }> {
+    this.checkAborted()
     return new Promise((resolve, reject) => {
       const conn = new Client()
       

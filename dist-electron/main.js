@@ -10183,6 +10183,27 @@ class CryptoUtil {
   }
 }
 class SSHService {
+  constructor() {
+    __publicField(this, "currentConn", null);
+    __publicField(this, "aborted", false);
+  }
+  abort() {
+    this.aborted = true;
+    if (this.currentConn) {
+      this.currentConn.end();
+      this.currentConn = null;
+    }
+  }
+  isAborted() {
+    return this.aborted;
+  }
+  resetAbort() {
+    this.aborted = false;
+    this.currentConn = null;
+  }
+  checkAborted() {
+    if (this.aborted) throw new Error("发布已取消");
+  }
   async testConnection(credential) {
     const conn = new ssh2.Client();
     return new Promise((resolve) => {
@@ -10211,8 +10232,10 @@ class SSHService {
     });
   }
   async uploadDirectory(credential, localPath, remotePath, onProgress) {
+    this.checkAborted();
     return new Promise((resolve, reject) => {
       const conn = new ssh2.Client();
+      this.currentConn = conn;
       const config = {
         host: credential.host,
         port: credential.port,
@@ -10230,39 +10253,66 @@ class SSHService {
         conn.sftp((err, sftp) => {
           if (err) {
             conn.end();
+            this.currentConn = null;
             reject(err);
             return;
           }
-          this.uploadDirectoryRecursive(sftp, localPath, remotePath, onProgress).then(() => {
+          this.countFiles(localPath).then((totalFiles) => {
+            const counters = { uploaded: 0, total: totalFiles };
+            return this.uploadDirectoryRecursive(sftp, localPath, remotePath, onProgress, counters);
+          }).then(() => {
             conn.end();
+            this.currentConn = null;
             resolve();
           }).catch((uploadErr) => {
             conn.end();
+            this.currentConn = null;
             reject(uploadErr);
           });
         });
       });
       conn.on("error", (err) => {
-        reject(err);
+        this.currentConn = null;
+        if (this.aborted) {
+          reject(new Error("发布已取消"));
+        } else {
+          reject(err);
+        }
       });
       conn.connect(config);
     });
   }
-  async uploadDirectoryRecursive(sftp, localPath, remotePath, onProgress) {
+  async countFiles(dirPath) {
+    let count = 0;
+    const items = await lib.readdir(dirPath);
+    for (const item of items) {
+      const itemPath = require$$1__namespace.join(dirPath, item);
+      const stats = await lib.stat(itemPath);
+      if (stats.isDirectory()) {
+        count += await this.countFiles(itemPath);
+      } else {
+        count++;
+      }
+    }
+    return count;
+  }
+  async uploadDirectoryRecursive(sftp, localPath, remotePath, onProgress, counters) {
+    this.checkAborted();
     await this.mkdirRemote(sftp, remotePath);
     const items = await lib.readdir(localPath);
     for (const item of items) {
+      this.checkAborted();
       const localItemPath = require$$1__namespace.join(localPath, item);
       const remoteItemPath = `${remotePath}/${item}`;
       const stats = await lib.stat(localItemPath);
       if (stats.isDirectory()) {
-        await this.uploadDirectoryRecursive(sftp, localItemPath, remoteItemPath, onProgress);
+        await this.uploadDirectoryRecursive(sftp, localItemPath, remoteItemPath, onProgress, counters);
       } else {
-        await this.uploadFile(sftp, localItemPath, remoteItemPath, onProgress);
+        await this.uploadFile(sftp, localItemPath, remoteItemPath, onProgress, counters);
       }
     }
   }
-  async uploadFile(sftp, localPath, remotePath, onProgress) {
+  async uploadFile(sftp, localPath, remotePath, onProgress, counters) {
     return new Promise((resolve, reject) => {
       const stats = lib.statSync(localPath);
       const total = stats.size;
@@ -10275,7 +10325,9 @@ class SSHService {
               filename: require$$1__namespace.basename(localPath),
               transferred,
               total,
-              percent: Math.round(transferred / total * 100)
+              percent: Math.round(transferred / total * 100),
+              fileCount: counters ? counters.uploaded + 1 : 1,
+              totalFiles: counters ? counters.total : 1
             });
           }
         }
@@ -10283,6 +10335,7 @@ class SSHService {
         if (err) {
           reject(err);
         } else {
+          if (counters) counters.uploaded++;
           resolve();
         }
       });
@@ -10300,6 +10353,7 @@ class SSHService {
     });
   }
   async execCommand(credential, command) {
+    this.checkAborted();
     return new Promise((resolve, reject) => {
       const conn = new ssh2.Client();
       const config = {
@@ -10343,13 +10397,54 @@ class SSHService {
     });
   }
 }
-const execAsync = require$$4.promisify(require$$0$3.exec);
+require$$4.promisify(require$$0$3.exec);
 class SVNService {
+  constructor() {
+    __publicField(this, "currentProcesses", []);
+    __publicField(this, "aborted", false);
+  }
+  abort() {
+    this.aborted = true;
+    for (const proc of this.currentProcesses) {
+      try {
+        proc.kill();
+      } catch {
+      }
+    }
+    this.currentProcesses = [];
+  }
+  isAborted() {
+    return this.aborted;
+  }
+  resetAbort() {
+    this.aborted = false;
+    this.currentProcesses = [];
+  }
+  checkAborted() {
+    if (this.aborted) throw new Error("发布已取消");
+  }
+  execCommand(command, options) {
+    this.checkAborted();
+    return new Promise((resolve, reject) => {
+      const proc = require$$0$3.exec(command, options, (err, stdout, stderr) => {
+        const idx = this.currentProcesses.indexOf(proc);
+        if (idx > -1) this.currentProcesses.splice(idx, 1);
+        if (this.aborted) {
+          reject(new Error("发布已取消"));
+        } else if (err) {
+          reject(err);
+        } else {
+          resolve({ stdout, stderr });
+        }
+      });
+      this.currentProcesses.push(proc);
+    });
+  }
   async testConnection(credential) {
     try {
       const password = credential.password ? CryptoUtil.decrypt(credential.password) : "";
       const command = `svn info --username "${credential.username}" --password "${password}" --non-interactive "${credential.svnUrl}"`;
-      await execAsync(command, { timeout: 1e4 });
+      await this.execCommand(command, { timeout: 1e4 });
       return { success: true, message: "Connection successful" };
     } catch (error) {
       logger.error("SVN test connection failed:", error);
@@ -10358,25 +10453,28 @@ class SVNService {
   }
   async uploadDirectory(credential, localPath, svnPath, commitMessage) {
     try {
+      this.checkAborted();
       const password = credential.password ? CryptoUtil.decrypt(credential.password) : "";
       const tempDir = `${localPath}_svn_temp`;
       const checkoutCommand = `svn checkout --username "${credential.username}" --password "${password}" --non-interactive "${svnPath}" "${tempDir}"`;
       try {
-        await execAsync(checkoutCommand, { timeout: 3e4 });
+        await this.execCommand(checkoutCommand, { timeout: 3e4 });
       } catch (error) {
+        if (error.message === "发布已取消") throw error;
         if (error.message.includes("already")) {
           const updateCommand = `svn update --username "${credential.username}" --password "${password}" --non-interactive "${tempDir}"`;
-          await execAsync(updateCommand, { timeout: 3e4 });
+          await this.execCommand(updateCommand, { timeout: 3e4 });
         } else {
           throw error;
         }
       }
+      this.checkAborted();
       const fs2 = require("fs-extra");
       await fs2.copy(localPath, tempDir, { overwrite: true });
       const addCommand = `svn add --force "${tempDir}" --auto-props --parents --depth infinity`;
-      await execAsync(addCommand, { timeout: 3e4 });
+      await this.execCommand(addCommand, { timeout: 3e4 });
       const commitCommand = `svn commit --username "${credential.username}" --password "${password}" --non-interactive -m "${commitMessage}" "${tempDir}"`;
-      await execAsync(commitCommand, { timeout: 6e4 });
+      await this.execCommand(commitCommand, { timeout: 6e4 });
       await fs2.remove(tempDir);
       logger.info("SVN upload completed successfully");
     } catch (error) {
@@ -10390,7 +10488,7 @@ class SVNService {
       const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
       const backupPath = `${svnPath}_backup_${timestamp}`;
       const command = `svn copy --username "${credential.username}" --password "${password}" --non-interactive -m "Backup before deployment" "${svnPath}" "${backupPath}"`;
-      await execAsync(command, { timeout: 3e4 });
+      await this.execCommand(command, { timeout: 3e4 });
       logger.info(`SVN backup created: ${backupPath}`);
       return backupPath;
     } catch (error) {
@@ -10402,7 +10500,7 @@ class SVNService {
     try {
       const password = credential.password ? CryptoUtil.decrypt(credential.password) : "";
       const command = `svn info --username "${credential.username}" --password "${password}" --non-interactive "${svnPath}"`;
-      const { stdout } = await execAsync(command, { timeout: 1e4 });
+      const { stdout } = await this.execCommand(command, { timeout: 1e4 });
       return stdout;
     } catch (error) {
       logger.error("SVN get info failed:", error);
@@ -10925,8 +11023,20 @@ function registerIpcHandlers(database2) {
     }
   });
   require$$0$6.ipcMain.handle("deploy:svn", async (event, config) => {
+    sshService.resetAbort();
+    svnService.resetAbort();
     try {
-      const { project, svnCredential, svnPath, commitMessage, backupEnabled, needBuild = true } = config;
+      const { project, svnPath, commitMessage, backupEnabled, needBuild = true } = config;
+      const svnCredential = config.svnCredential;
+      if (svnCredential && svnCredential.id) {
+        const c = db.get("SELECT * FROM svn_credentials WHERE id=?", [svnCredential.id]);
+        if (c) {
+          Object.assign(svnCredential, {
+            svnUrl: c.svn_url || "",
+            password: c.password || ""
+          });
+        }
+      }
       await gitService.pull(project.localPath);
       if (config.branch) {
         await gitService.checkoutBranch(project.localPath, config.branch);
@@ -10957,13 +11067,32 @@ function registerIpcHandlers(database2) {
       event.sender.send("deploy:progress", { stage: "completed", message: "发布成功！" });
       return { success: true };
     } catch (error) {
-      event.sender.send("deploy:progress", { stage: "failed", error: error.message });
+      const isCancelled = error.message === "发布已取消";
+      event.sender.send("deploy:progress", {
+        stage: isCancelled ? "cancelled" : "failed",
+        message: isCancelled ? "发布已取消" : void 0,
+        error: isCancelled ? void 0 : error.message
+      });
       return { success: false, error: error.message };
     }
   });
   require$$0$6.ipcMain.handle("deploy:server", async (event, config) => {
+    sshService.resetAbort();
+    svnService.resetAbort();
     try {
-      const { project, serverCredential, remotePath, backupEnabled, needBuild = true } = config;
+      const { project, remotePath, backupEnabled, needBuild = true } = config;
+      const serverCredential = config.serverCredential;
+      if (serverCredential && serverCredential.id) {
+        const c = db.get("SELECT * FROM server_credentials WHERE id=?", [serverCredential.id]);
+        if (c) {
+          Object.assign(serverCredential, {
+            authType: c.auth_type || "password",
+            password: c.password || "",
+            privateKey: c.private_key || "",
+            passphrase: c.passphrase || ""
+          });
+        }
+      }
       await gitService.pull(project.localPath);
       if (config.branch) {
         await gitService.checkoutBranch(project.localPath, config.branch);
@@ -10996,13 +11125,42 @@ function registerIpcHandlers(database2) {
       event.sender.send("deploy:progress", { stage: "completed", message: "发布成功！" });
       return { success: true };
     } catch (error) {
-      event.sender.send("deploy:progress", { stage: "failed", error: error.message });
+      const isCancelled = error.message === "发布已取消";
+      event.sender.send("deploy:progress", {
+        stage: isCancelled ? "cancelled" : "failed",
+        message: isCancelled ? "发布已取消" : void 0,
+        error: isCancelled ? void 0 : error.message
+      });
       return { success: false, error: error.message };
     }
   });
   require$$0$6.ipcMain.handle("deploy:mixed", async (event, config) => {
+    sshService.resetAbort();
+    svnService.resetAbort();
     try {
       const { project, targets, branch, needBuild = true } = config;
+      for (const target of targets) {
+        if (target.type === "server" && target.credential && target.credential.id) {
+          const c = db.get("SELECT * FROM server_credentials WHERE id=?", [target.credential.id]);
+          if (c) {
+            Object.assign(target.credential, {
+              authType: c.auth_type || "password",
+              password: c.password || "",
+              privateKey: c.private_key || "",
+              passphrase: c.passphrase || ""
+            });
+          }
+        }
+        if (target.type === "svn" && target.credential && target.credential.id) {
+          const c = db.get("SELECT * FROM svn_credentials WHERE id=?", [target.credential.id]);
+          if (c) {
+            Object.assign(target.credential, {
+              svnUrl: c.svn_url || "",
+              password: c.password || ""
+            });
+          }
+        }
+      }
       await gitService.pull(project.localPath);
       if (branch) await gitService.checkoutBranch(project.localPath, branch);
       if (needBuild) {
@@ -11036,12 +11194,19 @@ function registerIpcHandlers(database2) {
       event.sender.send("deploy:progress", { stage: "completed", message: "混合发布成功！" });
       return { success: true };
     } catch (error) {
-      event.sender.send("deploy:progress", { stage: "failed", error: error.message });
+      const isCancelled = error.message === "发布已取消";
+      event.sender.send("deploy:progress", {
+        stage: isCancelled ? "cancelled" : "failed",
+        message: isCancelled ? "发布已取消" : void 0,
+        error: isCancelled ? void 0 : error.message
+      });
       return { success: false, error: error.message };
     }
   });
   require$$0$6.ipcMain.handle("deploy:stop", async () => {
     buildService.stopBuild();
+    sshService.abort();
+    svnService.abort();
     return { success: true };
   });
   require$$0$6.ipcMain.handle("deploy:getHistory", async (event, projectId) => {
