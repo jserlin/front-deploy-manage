@@ -192,11 +192,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useProjectStore } from '@/stores/project'
 
 import type { Project } from '@/types/project'
 
+const route = useRoute()
 const projectStore = useProjectStore()
 
 const projects = computed(() => projectStore.projects)
@@ -371,11 +373,14 @@ const startDeploy = async () => {
     }
 
     if (result.success) {
+      deployProgress.value = { stage: 'completed', message: '发布成功！' }
       ElMessage.success('发布成功')
     } else {
+      deployProgress.value = { stage: 'failed', message: result.error || '发布失败' }
       ElMessage.error(result.error || '发布失败')
     }
   } catch (error: any) {
+    deployProgress.value = { stage: 'failed', message: error.message || '发布失败' }
     ElMessage.error(error.message || '发布失败')
   } finally {
     deploying.value = false
@@ -433,6 +438,38 @@ const handleProgress = (progress: any) => {
   }
 }
 
+const applyTemplate = async () => {
+  const templateId = route.query.templateId
+  if (!templateId) return
+
+  try {
+    const result = await window.electronAPI.template.getById(Number(templateId))
+    if (!result.success || !result.data) {
+      ElMessage.error('加载模板失败')
+      return
+    }
+
+    const tpl = result.data
+
+    if (tpl.projectId) {
+      deployConfig.value.projectId = tpl.projectId
+      await handleProjectChange()
+    }
+
+    deployConfig.value.deployType = tpl.deployType || 'svn'
+    deployConfig.value.backupEnabled = tpl.backupEnabled === true || tpl.backupEnabled === 1
+
+    if (tpl.svnCredentialId) deployConfig.value.svnCredentialId = tpl.svnCredentialId
+    if (tpl.svnPath) deployConfig.value.svnPath = tpl.svnPath
+    if (tpl.serverCredentialId) deployConfig.value.serverCredentialId = tpl.serverCredentialId
+    if (tpl.remotePath) deployConfig.value.remotePath = tpl.remotePath
+
+    ElMessage.success(`已加载模板: ${tpl.name}`)
+  } catch (error: any) {
+    ElMessage.error(error.message || '加载模板失败')
+  }
+}
+
 onMounted(async () => {
   await projectStore.fetchProjects()
   
@@ -450,6 +487,8 @@ onMounted(async () => {
   }
   
   window.electronAPI.deploy.onProgress(handleProgress)
+
+  await applyTemplate()
 })
 
 onUnmounted(() => {

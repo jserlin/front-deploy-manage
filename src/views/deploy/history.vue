@@ -2,13 +2,28 @@
   <div class="history-page">
     <div class="page-header">
       <h2>发布历史</h2>
-      <el-button @click="fetchHistory">
-        <el-icon><Refresh /></el-icon>
-        刷新
-      </el-button>
+      <div class="header-actions">
+        <el-select
+          v-model="filterProjectId"
+          placeholder="全部项目"
+          clearable
+          style="width: 200px; margin-right: 12px"
+        >
+          <el-option
+            v-for="project in projects"
+            :key="project.id"
+            :label="project.name"
+            :value="project.id"
+          />
+        </el-select>
+        <el-button @click="fetchHistory">
+          <el-icon><Refresh /></el-icon>
+          刷新
+        </el-button>
+      </div>
     </div>
 
-    <el-table :data="historyList" v-loading="loading" border stripe>
+    <el-table :data="filteredList" v-loading="loading" border stripe>
       <el-table-column prop="projectName" label="项目名称" width="180" />
       <el-table-column prop="deployType" label="发布类型" width="120">
         <template #default="{ row }">
@@ -47,28 +62,73 @@
       </el-table-column>
     </el-table>
 
-    <!-- 日志对话框 -->
     <el-dialog
       v-model="logDialogVisible"
-      title="发布日志"
-      width="800px"
+      :title="`发布日志 - ${currentLogProjectName}`"
+      width="900px"
+      top="5vh"
     >
-      <div class="log-content">
-        <pre>{{ currentLog }}</pre>
+      <div class="log-header">
+        <div class="log-info">
+          <span class="log-info-item">
+            <el-tag size="small" :type="getStatusType(currentLogStatus)">
+              {{ getStatusLabel(currentLogStatus) }}
+            </el-tag>
+          </span>
+          <span class="log-info-item" v-if="currentLogBranch">
+            <el-icon><Folder /></el-icon>
+            分支: {{ currentLogBranch }}
+          </span>
+          <span class="log-info-item" v-if="currentLogCommit">
+            <el-icon><Document /></el-icon>
+            Commit: {{ currentLogCommit }}
+          </span>
+          <span class="log-info-item" v-if="currentLogTime">
+            <el-icon><Clock /></el-icon>
+            {{ currentLogTime }}
+          </span>
+        </div>
+        <el-button size="small" @click="copyLog" :disabled="!currentLog">
+          <el-icon><CopyDocument /></el-icon>
+          复制日志
+        </el-button>
+      </div>
+      <div class="log-content" :class="{ 'log-empty': !currentLog }">
+        <pre v-if="currentLog">{{ currentLog }}</pre>
+        <el-empty v-else description="暂无日志记录" :image-size="80" />
       </div>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Refresh, Folder, Document, Clock, CopyDocument } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
+import { useProjectStore } from '@/stores/project'
+
+const projectStore = useProjectStore()
+const projects = computed(() => projectStore.projects)
 
 const loading = ref(false)
 const historyList = ref<any[]>([])
 const logDialogVisible = ref(false)
 const currentLog = ref('')
+const filterProjectId = ref<number | null>(null)
+const currentLogProjectName = ref('')
+const currentLogStatus = ref('')
+const currentLogBranch = ref('')
+const currentLogCommit = ref('')
+const currentLogTime = ref('')
+
+const filteredList = computed(() => {
+  let list = historyList.value
+  if (filterProjectId.value) {
+    list = list.filter((item: any) => item.projectId === filterProjectId.value)
+  }
+  return list
+})
 
 const fetchHistory = async () => {
   loading.value = true
@@ -76,7 +136,6 @@ const fetchHistory = async () => {
     const result = await window.electronAPI.deploy.getHistory()
     if (result.success) {
       historyList.value = result.data || []
-      console.log(`既然手边有树叶 ~ fetchHistory ~ historyList:`, historyList)
     } else {
       ElMessage.error(result.error || '获取历史失败')
     }
@@ -126,11 +185,27 @@ const formatTime = (time: string) => {
 }
 
 const viewLog = (row: any) => {
-  currentLog.value = row.log || '无日志'
+  currentLog.value = row.log || ''
+  currentLogProjectName.value = row.projectName || ''
+  currentLogStatus.value = row.status || ''
+  currentLogBranch.value = row.gitBranch || ''
+  currentLogCommit.value = row.gitCommit ? row.gitCommit.substring(0, 8) : ''
+  currentLogTime.value = row.startedAt ? formatTime(row.startedAt) : ''
   logDialogVisible.value = true
 }
 
-onMounted(() => {
+const copyLog = async () => {
+  if (!currentLog.value) return
+  try {
+    await navigator.clipboard.writeText(currentLog.value)
+    ElMessage.success('日志已复制到剪贴板')
+  } catch (e) {
+    ElMessage.error('复制失败')
+  }
+}
+
+onMounted(async () => {
+  await projectStore.fetchProjects()
   fetchHistory()
 })
 </script>
@@ -147,12 +222,46 @@ onMounted(() => {
       margin: 0;
       font-size: 24px;
     }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  .log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f5f7fa;
+    border-radius: 4px;
+    margin-bottom: 12px;
+
+    .log-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+
+      .log-info-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 13px;
+        color: #606266;
+
+        .el-icon {
+          font-size: 14px;
+        }
+      }
+    }
   }
 
   .log-content {
     max-height: 500px;
     overflow-y: auto;
-    background: #f5f7fa;
+    background: #1e1e1e;
     padding: 16px;
     border-radius: 4px;
     
@@ -160,9 +269,15 @@ onMounted(() => {
       margin: 0;
       white-space: pre-wrap;
       word-wrap: break-word;
-      font-family: 'Courier New', monospace;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
       font-size: 13px;
       line-height: 1.6;
+      color: #d4d4d4;
+    }
+
+    &.log-empty {
+      background: #fff;
+      padding: 40px 16px;
     }
   }
 }

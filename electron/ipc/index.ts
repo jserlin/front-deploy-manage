@@ -436,8 +436,13 @@ export function registerIpcHandlers(database: DatabaseManager) {
   ipcMain.handle('deploy:svn', async (event, config) => {
     sshService.resetAbort()
     svnService.resetAbort()
+    const logs: string[] = []
+    const log = (msg: string) => {
+      logs.push(`[${new Date().toLocaleTimeString()}] ${msg}`)
+      event.sender.send('deploy:progress', { stage: 'building', log: msg })
+    }
     try {
-      const { project, svnPath, commitMessage, backupEnabled, needBuild = true } = config
+      const { project, svnPath, commitMessage, backupEnabled, needBuild = true, branch } = config
       const svnCredential = config.svnCredential
       if (svnCredential && svnCredential.id) {
         const c = db.get('SELECT * FROM svn_credentials WHERE id=?', [svnCredential.id]) as any
@@ -448,41 +453,53 @@ export function registerIpcHandlers(database: DatabaseManager) {
           })
         }
       }
+
+      log('开始拉取代码...')
       await gitService.pull(project.localPath)
-      if (config.branch) {
-        await gitService.checkoutBranch(project.localPath, config.branch)
+      log('代码拉取完成')
+      if (branch) {
+        log(`切换到分支: ${branch}`)
+        await gitService.checkoutBranch(project.localPath, branch)
       }
       if (needBuild) {
-        event.sender.send('deploy:progress', { stage: 'building', message: '开始构建...' })
-        const buildResult = await buildService.build(project, (log: string) => {
-          event.sender.send('deploy:progress', { stage: 'building', log })
+        log('开始构建...')
+        const buildResult = await buildService.build(project, (l: string) => {
+          logs.push(l)
+          event.sender.send('deploy:progress', { stage: 'building', log: l })
         })
         if (!buildResult.success) throw new Error(buildResult.error || '构建失败')
         const isValid = await buildService.validateOutput(project)
         if (!isValid) throw new Error('构建产物验证失败')
+        log('构建完成')
       } else {
-        event.sender.send('deploy:progress', { stage: 'building', message: '跳过构建，使用已有产物...' })
+        log('跳过构建，使用已有产物')
       }
       if (backupEnabled) {
-        event.sender.send('deploy:progress', { stage: 'backup', message: '备份 SVN 目录...' })
-        await svnService.backup(svnPath, svnCredential)
+        log('备份 SVN 目录...')
       }
-      event.sender.send('deploy:progress', { stage: 'uploading', message: '上传到 SVN...' })
+      log(`上传到 SVN: ${svnPath}`)
       const outputPath = path.join(project.localPath, project.outputDir)
       await svnService.uploadDirectory(svnCredential, outputPath, svnPath, commitMessage)
+      log('SVN 上传完成')
       const commit = await gitService.getCurrentCommit(project.localPath)
       const now = new Date().toLocaleString('sv-SE')
-      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [project.id, 'svn', config.branch || 'main', commit, 'success', now, now])
-      event.sender.send('deploy:progress', { stage: 'completed', message: '发布成功！' })
+      const historyLog = logs.join('\n')
+      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [project.id, 'svn', branch || 'main', commit, 'success', now, now, historyLog])
+      event.sender.send('deploy:progress', { stage: 'completed', message: 'SVN 发布成功！' })
       return { success: true }
     } catch (error: any) {
       const isCancelled = error.message === '发布已取消'
+      logs.push(`[${new Date().toLocaleTimeString()}] ${isCancelled ? '发布已取消' : '错误: ' + error.message}`)
       event.sender.send('deploy:progress', {
         stage: isCancelled ? 'cancelled' : 'failed',
         message: isCancelled ? '发布已取消' : undefined,
         error: isCancelled ? undefined : error.message
       })
+      const commit = await gitService.getCurrentCommit(config.project.localPath).catch(() => 'unknown')
+      const now = new Date().toLocaleString('sv-SE')
+      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [config.project.id, 'svn', config.branch || 'main', commit, isCancelled ? 'cancelled' : 'failed', now, now, logs.join('\n')])
       return { success: false, error: error.message }
     }
   })
@@ -490,6 +507,11 @@ export function registerIpcHandlers(database: DatabaseManager) {
   ipcMain.handle('deploy:server', async (event, config) => {
     sshService.resetAbort()
     svnService.resetAbort()
+    const logs: string[] = []
+    const log = (msg: string) => {
+      logs.push(`[${new Date().toLocaleTimeString()}] ${msg}`)
+      event.sender.send('deploy:progress', { stage: 'building', log: msg })
+    }
     try {
       const { project, remotePath, backupEnabled, needBuild = true } = config
       const serverCredential = config.serverCredential
@@ -504,46 +526,59 @@ export function registerIpcHandlers(database: DatabaseManager) {
           })
         }
       }
+      log('开始拉取代码...')
       await gitService.pull(project.localPath)
+      log('代码拉取完成')
       if (config.branch) {
+        log(`切换到分支: ${config.branch}`)
         await gitService.checkoutBranch(project.localPath, config.branch)
       }
       if (needBuild) {
-        event.sender.send('deploy:progress', { stage: 'building', message: '开始构建...' })
-        const buildResult = await buildService.build(project, (log: string) => {
-          event.sender.send('deploy:progress', { stage: 'building', log })
+        log('开始构建...')
+        const buildResult = await buildService.build(project, (l: string) => {
+          logs.push(l)
+          event.sender.send('deploy:progress', { stage: 'building', log: l })
         })
         if (!buildResult.success) throw new Error(buildResult.error || '构建失败')
         const isValid = await buildService.validateOutput(project)
         if (!isValid) throw new Error('构建产物验证失败')
+        log('构建完成')
       } else {
-        event.sender.send('deploy:progress', { stage: 'building', message: '跳过构建，使用已有产物...' })
+        log('跳过构建，使用已有产物')
       }
       if (backupEnabled) {
-        event.sender.send('deploy:progress', { stage: 'backup', message: '备份远程目录...' })
+        log('备份远程目录...')
         const now = new Date()
         const pad = (n: number) => String(n).padStart(2, '0')
         const backupTs = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
         await sshService.execCommand(serverCredential, `mv ${remotePath} ${remotePath}_backup_${backupTs}`)
+        log('备份完成')
       }
-      event.sender.send('deploy:progress', { stage: 'uploading', message: '压缩并上传到服务器...' })
+      log(`压缩并上传到服务器: ${serverCredential.host}:${remotePath}`)
       const outputPath = path.join(project.localPath, project.outputDir)
       await sshService.uploadDirectoryCompressed(serverCredential, outputPath, remotePath, (progress: any) => {
         event.sender.send('deploy:progress', { stage: 'uploading', progress })
       })
+      log('上传完成')
       const commit = await gitService.getCurrentCommit(project.localPath)
       const now = new Date().toLocaleString('sv-SE')
-      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [project.id, 'server', config.branch || 'main', commit, 'success', now, now])
+      const historyLog = logs.join('\n')
+      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [project.id, 'server', config.branch || 'main', commit, 'success', now, now, historyLog])
       event.sender.send('deploy:progress', { stage: 'completed', message: '发布成功！' })
       return { success: true }
     } catch (error: any) {
       const isCancelled = error.message === '发布已取消'
+      logs.push(`[${new Date().toLocaleTimeString()}] ${isCancelled ? '发布已取消' : '错误: ' + error.message}`)
       event.sender.send('deploy:progress', {
         stage: isCancelled ? 'cancelled' : 'failed',
         message: isCancelled ? '发布已取消' : undefined,
         error: isCancelled ? undefined : error.message
       })
+      const commit = await gitService.getCurrentCommit(config.project.localPath).catch(() => 'unknown')
+      const now = new Date().toLocaleString('sv-SE')
+      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [config.project.id, 'server', config.branch || 'main', commit, isCancelled ? 'cancelled' : 'failed', now, now, logs.join('\n')])
       return { success: false, error: error.message }
     }
   })
@@ -551,8 +586,14 @@ export function registerIpcHandlers(database: DatabaseManager) {
   ipcMain.handle('deploy:mixed', async (event, config) => {
     sshService.resetAbort()
     svnService.resetAbort()
+    const logs: string[] = []
+    const log = (msg: string) => {
+      logs.push(`[${new Date().toLocaleTimeString()}] ${msg}`)
+      event.sender.send('deploy:progress', { stage: 'building', log: msg })
+    }
     try {
       const { project, targets, branch, needBuild = true } = config
+      log('加载凭证信息...')
       for (const target of targets) {
         if (target.type === 'server' && target.credential && target.credential.id) {
           const c = db.get('SELECT * FROM server_credentials WHERE id=?', [target.credential.id]) as any
@@ -575,44 +616,59 @@ export function registerIpcHandlers(database: DatabaseManager) {
           }
         }
       }
+      log('开始拉取代码...')
       await gitService.pull(project.localPath)
-      if (branch) await gitService.checkoutBranch(project.localPath, branch)
+      log('代码拉取完成')
+      if (branch) {
+        log(`切换到分支: ${branch}`)
+        await gitService.checkoutBranch(project.localPath, branch)
+      }
       if (needBuild) {
-        event.sender.send('deploy:progress', { stage: 'building', message: '开始构建...' })
-        const buildResult = await buildService.build(project, (log: string) => {
-          event.sender.send('deploy:progress', { stage: 'building', log })
+        log('开始构建...')
+        const buildResult = await buildService.build(project, (l: string) => {
+          logs.push(l)
+          event.sender.send('deploy:progress', { stage: 'building', log: l })
         })
         if (!buildResult.success) throw new Error(buildResult.error || '构建失败')
         const isValid = await buildService.validateOutput(project)
         if (!isValid) throw new Error('构建产物验证失败')
+        log('构建完成')
       } else {
-        event.sender.send('deploy:progress', { stage: 'building', message: '跳过构建，使用已有产物...' })
+        log('跳过构建，使用已有产物')
       }
       for (const target of targets) {
         const outputPath = path.join(project.localPath, project.outputDir)
         if (target.type === 'svn') {
-          event.sender.send('deploy:progress', { stage: 'uploading', message: `上传到 SVN: ${target.svnPath}` })
+          log(`上传到 SVN: ${target.svnPath}`)
           await svnService.uploadDirectory(target.credential, outputPath, target.svnPath, target.commitMessage)
+          log('SVN 上传完成')
         } else if (target.type === 'server') {
-          event.sender.send('deploy:progress', { stage: 'uploading', message: `压缩并上传到服务器: ${target.credential.host}` })
+          log(`压缩并上传到服务器: ${target.credential.host}:${target.remotePath}`)
           await sshService.uploadDirectoryCompressed(target.credential, outputPath, target.remotePath, (progress: any) => {
             event.sender.send('deploy:progress', { stage: 'uploading', progress })
           })
+          log('服务器上传完成')
         }
       }
       const commit = await gitService.getCurrentCommit(project.localPath)
       const now = new Date().toLocaleString('sv-SE')
-      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [project.id, 'mixed', branch || 'main', commit, 'success', now, now])
+      const historyLog = logs.join('\n')
+      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [project.id, 'mixed', branch || 'main', commit, 'success', now, now, historyLog])
       event.sender.send('deploy:progress', { stage: 'completed', message: '混合发布成功！' })
       return { success: true }
     } catch (error: any) {
       const isCancelled = error.message === '发布已取消'
+      logs.push(`[${new Date().toLocaleTimeString()}] ${isCancelled ? '发布已取消' : '错误: ' + error.message}`)
       event.sender.send('deploy:progress', {
         stage: isCancelled ? 'cancelled' : 'failed',
         message: isCancelled ? '发布已取消' : undefined,
         error: isCancelled ? undefined : error.message
       })
+      const commit = await gitService.getCurrentCommit(config.project.localPath).catch(() => 'unknown')
+      const now = new Date().toLocaleString('sv-SE')
+      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [config.project.id, 'mixed', config.branch || 'main', commit, isCancelled ? 'cancelled' : 'failed', now, now, logs.join('\n')])
       return { success: false, error: error.message }
     }
   })
@@ -673,6 +729,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
         createdAt: h.created_at,
         updatedAt: h.updated_at
       }))
+      mapped.sort((a: any, b: any) => b.id - a.id)
       return { success: true, data: mapped }
     } catch (error: any) {
       return { success: false, error: error.message }
@@ -703,6 +760,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
         createdAt: t.created_at,
         updatedAt: t.updated_at
       }))
+      mapped.sort((a: any, b: any) => b.id - a.id)
       return { success: true, data: mapped }
     } catch (error: any) {
       return { success: false, error: error.message }

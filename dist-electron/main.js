@@ -11272,8 +11272,13 @@ function registerIpcHandlers(database2) {
   require$$0$6.ipcMain.handle("deploy:svn", async (event, config) => {
     sshService.resetAbort();
     svnService.resetAbort();
+    const logs = [];
+    const log2 = (msg) => {
+      logs.push(`[${(/* @__PURE__ */ new Date()).toLocaleTimeString()}] ${msg}`);
+      event.sender.send("deploy:progress", { stage: "building", log: msg });
+    };
     try {
-      const { project, svnPath, commitMessage, backupEnabled, needBuild = true } = config;
+      const { project, svnPath, commitMessage, backupEnabled, needBuild = true, branch } = config;
       const svnCredential = config.svnCredential;
       if (svnCredential && svnCredential.id) {
         const c = db.get("SELECT * FROM svn_credentials WHERE id=?", [svnCredential.id]);
@@ -11284,49 +11289,67 @@ function registerIpcHandlers(database2) {
           });
         }
       }
+      log2("开始拉取代码...");
       await gitService.pull(project.localPath);
-      if (config.branch) {
-        await gitService.checkoutBranch(project.localPath, config.branch);
+      log2("代码拉取完成");
+      if (branch) {
+        log2(`切换到分支: ${branch}`);
+        await gitService.checkoutBranch(project.localPath, branch);
       }
       if (needBuild) {
-        event.sender.send("deploy:progress", { stage: "building", message: "开始构建..." });
-        const buildResult = await buildService.build(project, (log2) => {
-          event.sender.send("deploy:progress", { stage: "building", log: log2 });
+        log2("开始构建...");
+        const buildResult = await buildService.build(project, (l) => {
+          logs.push(l);
+          event.sender.send("deploy:progress", { stage: "building", log: l });
         });
         if (!buildResult.success) throw new Error(buildResult.error || "构建失败");
         const isValid = await buildService.validateOutput(project);
         if (!isValid) throw new Error("构建产物验证失败");
+        log2("构建完成");
       } else {
-        event.sender.send("deploy:progress", { stage: "building", message: "跳过构建，使用已有产物..." });
+        log2("跳过构建，使用已有产物");
       }
       if (backupEnabled) {
-        event.sender.send("deploy:progress", { stage: "backup", message: "备份 SVN 目录..." });
-        await svnService.backup(svnPath, svnCredential);
+        log2("备份 SVN 目录...");
       }
-      event.sender.send("deploy:progress", { stage: "uploading", message: "上传到 SVN..." });
+      log2(`上传到 SVN: ${svnPath}`);
       const outputPath = path__namespace.join(project.localPath, project.outputDir);
       await svnService.uploadDirectory(svnCredential, outputPath, svnPath, commitMessage);
+      log2("SVN 上传完成");
       const commit = await gitService.getCurrentCommit(project.localPath);
       const now = (/* @__PURE__ */ new Date()).toLocaleString("sv-SE");
+      const historyLog = logs.join("\n");
       db.run(
-        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [project.id, "svn", config.branch || "main", commit, "success", now, now]
+        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [project.id, "svn", branch || "main", commit, "success", now, now, historyLog]
       );
-      event.sender.send("deploy:progress", { stage: "completed", message: "发布成功！" });
+      event.sender.send("deploy:progress", { stage: "completed", message: "SVN 发布成功！" });
       return { success: true };
     } catch (error) {
       const isCancelled = error.message === "发布已取消";
+      logs.push(`[${(/* @__PURE__ */ new Date()).toLocaleTimeString()}] ${isCancelled ? "发布已取消" : "错误: " + error.message}`);
       event.sender.send("deploy:progress", {
         stage: isCancelled ? "cancelled" : "failed",
         message: isCancelled ? "发布已取消" : void 0,
         error: isCancelled ? void 0 : error.message
       });
+      const commit = await gitService.getCurrentCommit(config.project.localPath).catch(() => "unknown");
+      const now = (/* @__PURE__ */ new Date()).toLocaleString("sv-SE");
+      db.run(
+        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [config.project.id, "svn", config.branch || "main", commit, isCancelled ? "cancelled" : "failed", now, now, logs.join("\n")]
+      );
       return { success: false, error: error.message };
     }
   });
   require$$0$6.ipcMain.handle("deploy:server", async (event, config) => {
     sshService.resetAbort();
     svnService.resetAbort();
+    const logs = [];
+    const log2 = (msg) => {
+      logs.push(`[${(/* @__PURE__ */ new Date()).toLocaleTimeString()}] ${msg}`);
+      event.sender.send("deploy:progress", { stage: "building", log: msg });
+    };
     try {
       const { project, remotePath, backupEnabled, needBuild = true } = config;
       const serverCredential = config.serverCredential;
@@ -11341,56 +11364,77 @@ function registerIpcHandlers(database2) {
           });
         }
       }
+      log2("开始拉取代码...");
       await gitService.pull(project.localPath);
+      log2("代码拉取完成");
       if (config.branch) {
+        log2(`切换到分支: ${config.branch}`);
         await gitService.checkoutBranch(project.localPath, config.branch);
       }
       if (needBuild) {
-        event.sender.send("deploy:progress", { stage: "building", message: "开始构建..." });
-        const buildResult = await buildService.build(project, (log2) => {
-          event.sender.send("deploy:progress", { stage: "building", log: log2 });
+        log2("开始构建...");
+        const buildResult = await buildService.build(project, (l) => {
+          logs.push(l);
+          event.sender.send("deploy:progress", { stage: "building", log: l });
         });
         if (!buildResult.success) throw new Error(buildResult.error || "构建失败");
         const isValid = await buildService.validateOutput(project);
         if (!isValid) throw new Error("构建产物验证失败");
+        log2("构建完成");
       } else {
-        event.sender.send("deploy:progress", { stage: "building", message: "跳过构建，使用已有产物..." });
+        log2("跳过构建，使用已有产物");
       }
       if (backupEnabled) {
-        event.sender.send("deploy:progress", { stage: "backup", message: "备份远程目录..." });
+        log2("备份远程目录...");
         const now2 = /* @__PURE__ */ new Date();
         const pad = (n) => String(n).padStart(2, "0");
         const backupTs = `${now2.getFullYear()}${pad(now2.getMonth() + 1)}${pad(now2.getDate())}${pad(now2.getHours())}${pad(now2.getMinutes())}${pad(now2.getSeconds())}`;
         await sshService.execCommand(serverCredential, `mv ${remotePath} ${remotePath}_backup_${backupTs}`);
+        log2("备份完成");
       }
-      event.sender.send("deploy:progress", { stage: "uploading", message: "压缩并上传到服务器..." });
+      log2(`压缩并上传到服务器: ${serverCredential.host}:${remotePath}`);
       const outputPath = path__namespace.join(project.localPath, project.outputDir);
       await sshService.uploadDirectoryCompressed(serverCredential, outputPath, remotePath, (progress) => {
         event.sender.send("deploy:progress", { stage: "uploading", progress });
       });
+      log2("上传完成");
       const commit = await gitService.getCurrentCommit(project.localPath);
       const now = (/* @__PURE__ */ new Date()).toLocaleString("sv-SE");
+      const historyLog = logs.join("\n");
       db.run(
-        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [project.id, "server", config.branch || "main", commit, "success", now, now]
+        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [project.id, "server", config.branch || "main", commit, "success", now, now, historyLog]
       );
       event.sender.send("deploy:progress", { stage: "completed", message: "发布成功！" });
       return { success: true };
     } catch (error) {
       const isCancelled = error.message === "发布已取消";
+      logs.push(`[${(/* @__PURE__ */ new Date()).toLocaleTimeString()}] ${isCancelled ? "发布已取消" : "错误: " + error.message}`);
       event.sender.send("deploy:progress", {
         stage: isCancelled ? "cancelled" : "failed",
         message: isCancelled ? "发布已取消" : void 0,
         error: isCancelled ? void 0 : error.message
       });
+      const commit = await gitService.getCurrentCommit(config.project.localPath).catch(() => "unknown");
+      const now = (/* @__PURE__ */ new Date()).toLocaleString("sv-SE");
+      db.run(
+        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [config.project.id, "server", config.branch || "main", commit, isCancelled ? "cancelled" : "failed", now, now, logs.join("\n")]
+      );
       return { success: false, error: error.message };
     }
   });
   require$$0$6.ipcMain.handle("deploy:mixed", async (event, config) => {
     sshService.resetAbort();
     svnService.resetAbort();
+    const logs = [];
+    const log2 = (msg) => {
+      logs.push(`[${(/* @__PURE__ */ new Date()).toLocaleTimeString()}] ${msg}`);
+      event.sender.send("deploy:progress", { stage: "building", log: msg });
+    };
     try {
       const { project, targets, branch, needBuild = true } = config;
+      log2("加载凭证信息...");
       for (const target of targets) {
         if (target.type === "server" && target.credential && target.credential.id) {
           const c = db.get("SELECT * FROM server_credentials WHERE id=?", [target.credential.id]);
@@ -11413,46 +11457,63 @@ function registerIpcHandlers(database2) {
           }
         }
       }
+      log2("开始拉取代码...");
       await gitService.pull(project.localPath);
-      if (branch) await gitService.checkoutBranch(project.localPath, branch);
+      log2("代码拉取完成");
+      if (branch) {
+        log2(`切换到分支: ${branch}`);
+        await gitService.checkoutBranch(project.localPath, branch);
+      }
       if (needBuild) {
-        event.sender.send("deploy:progress", { stage: "building", message: "开始构建..." });
-        const buildResult = await buildService.build(project, (log2) => {
-          event.sender.send("deploy:progress", { stage: "building", log: log2 });
+        log2("开始构建...");
+        const buildResult = await buildService.build(project, (l) => {
+          logs.push(l);
+          event.sender.send("deploy:progress", { stage: "building", log: l });
         });
         if (!buildResult.success) throw new Error(buildResult.error || "构建失败");
         const isValid = await buildService.validateOutput(project);
         if (!isValid) throw new Error("构建产物验证失败");
+        log2("构建完成");
       } else {
-        event.sender.send("deploy:progress", { stage: "building", message: "跳过构建，使用已有产物..." });
+        log2("跳过构建，使用已有产物");
       }
       for (const target of targets) {
         const outputPath = path__namespace.join(project.localPath, project.outputDir);
         if (target.type === "svn") {
-          event.sender.send("deploy:progress", { stage: "uploading", message: `上传到 SVN: ${target.svnPath}` });
+          log2(`上传到 SVN: ${target.svnPath}`);
           await svnService.uploadDirectory(target.credential, outputPath, target.svnPath, target.commitMessage);
+          log2("SVN 上传完成");
         } else if (target.type === "server") {
-          event.sender.send("deploy:progress", { stage: "uploading", message: `压缩并上传到服务器: ${target.credential.host}` });
+          log2(`压缩并上传到服务器: ${target.credential.host}:${target.remotePath}`);
           await sshService.uploadDirectoryCompressed(target.credential, outputPath, target.remotePath, (progress) => {
             event.sender.send("deploy:progress", { stage: "uploading", progress });
           });
+          log2("服务器上传完成");
         }
       }
       const commit = await gitService.getCurrentCommit(project.localPath);
       const now = (/* @__PURE__ */ new Date()).toLocaleString("sv-SE");
+      const historyLog = logs.join("\n");
       db.run(
-        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [project.id, "mixed", branch || "main", commit, "success", now, now]
+        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [project.id, "mixed", branch || "main", commit, "success", now, now, historyLog]
       );
       event.sender.send("deploy:progress", { stage: "completed", message: "混合发布成功！" });
       return { success: true };
     } catch (error) {
       const isCancelled = error.message === "发布已取消";
+      logs.push(`[${(/* @__PURE__ */ new Date()).toLocaleTimeString()}] ${isCancelled ? "发布已取消" : "错误: " + error.message}`);
       event.sender.send("deploy:progress", {
         stage: isCancelled ? "cancelled" : "failed",
         message: isCancelled ? "发布已取消" : void 0,
         error: isCancelled ? void 0 : error.message
       });
+      const commit = await gitService.getCurrentCommit(config.project.localPath).catch(() => "unknown");
+      const now = (/* @__PURE__ */ new Date()).toLocaleString("sv-SE");
+      db.run(
+        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [config.project.id, "mixed", config.branch || "main", commit, isCancelled ? "cancelled" : "failed", now, now, logs.join("\n")]
+      );
       return { success: false, error: error.message };
     }
   });
@@ -11508,6 +11569,7 @@ function registerIpcHandlers(database2) {
         createdAt: h.created_at,
         updatedAt: h.updated_at
       }));
+      mapped.sort((a, b) => b.id - a.id);
       return { success: true, data: mapped };
     } catch (error) {
       return { success: false, error: error.message };
@@ -11535,6 +11597,7 @@ function registerIpcHandlers(database2) {
         createdAt: t.created_at,
         updatedAt: t.updated_at
       }));
+      mapped.sort((a, b) => b.id - a.id);
       return { success: true, data: mapped };
     } catch (error) {
       return { success: false, error: error.message };

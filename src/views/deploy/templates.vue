@@ -2,13 +2,28 @@
   <div class="templates-page">
     <div class="page-header">
       <h2>发布模板</h2>
-      <el-button type="primary" @click="showAddDialog">
-        <el-icon><Plus /></el-icon>
-        创建模板
-      </el-button>
+      <div class="header-actions">
+        <el-select
+          v-model="filterProjectId"
+          placeholder="全部项目"
+          clearable
+          style="width: 200px; margin-right: 12px"
+        >
+          <el-option
+            v-for="project in projects"
+            :key="project.id"
+            :label="project.name"
+            :value="project.id"
+          />
+        </el-select>
+        <el-button type="primary" @click="showAddDialog">
+          <el-icon><Plus /></el-icon>
+          创建模板
+        </el-button>
+      </div>
     </div>
 
-    <el-table :data="templates" v-loading="loading" border stripe>
+    <el-table :data="filteredList" v-loading="loading" border stripe>
       <el-table-column prop="name" label="模板名称" width="180" />
       <el-table-column prop="projectName" label="项目" width="150" />
       <el-table-column prop="deployType" label="发布类型" width="120">
@@ -125,6 +140,15 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const editingId = ref<number | null>(null)
 const formRef = ref()
+const filterProjectId = ref<number | null>(null)
+
+const filteredList = computed(() => {
+  let list = templates.value
+  if (filterProjectId.value) {
+    list = list.filter((item: any) => item.projectId === filterProjectId.value)
+  }
+  return list
+})
 
 const formData = ref({
   name: '',
@@ -203,11 +227,7 @@ const editTemplate = (template: any) => {
 }
 
 const useTemplate = (template: any) => {
-  const project = projects.value.find((p: any) => p.id === template.projectId)
-  if (project) {
-    projectStore.setCurrentProject(project)
-    router.push('/deploy')
-  }
+  router.push({ path: '/deploy', query: { templateId: String(template.id) } })
 }
 
 const deleteTemplate = async (template: any) => {
@@ -288,6 +308,10 @@ onMounted(async () => {
     h2 {
       margin: 0;
       font-size: 24px;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
     }
   }
 }
