@@ -11222,7 +11222,13 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("svnCredential:testConnection", async (event, id) => {
     try {
-      const credential = db.get("SELECT * FROM svn_credentials WHERE id=?", [id]);
+      const c = db.get("SELECT * FROM svn_credentials WHERE id=?", [id]);
+      if (!c) return { success: false, message: "凭证不存在" };
+      const credential = {
+        svnUrl: c.svn_url || "",
+        username: c.username,
+        password: c.password || ""
+      };
       const result = await svnService.testConnection(credential);
       return result;
     } catch (error) {

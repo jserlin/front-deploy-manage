@@ -376,7 +376,13 @@ export function registerIpcHandlers(database: DatabaseManager) {
 
   ipcMain.handle('svnCredential:testConnection', async (event, id: number) => {
     try {
-      const credential = db.get('SELECT * FROM svn_credentials WHERE id=?', [id]) as any
+      const c = db.get('SELECT * FROM svn_credentials WHERE id=?', [id]) as any
+      if (!c) return { success: false, message: '凭证不存在' }
+      const credential = {
+        svnUrl: c.svn_url || '',
+        username: c.username,
+        password: c.password || ''
+      }
       const result = await svnService.testConnection(credential)
       return result
     } catch (error: any) {

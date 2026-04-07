@@ -211,7 +211,7 @@ const deployLogs = ref<string[]>([])
 const deployConfig = ref({
   projectId: null as number | null,
   branch: '',
-  deployType: 'svn' as 'svn' | 'server' | 'mixed',
+  deployType: 'server' as 'svn' | 'server' | 'mixed',
   serverCredentialId: null as number | null,
   svnCredentialId: null as number | null,
   remotePath: '',
