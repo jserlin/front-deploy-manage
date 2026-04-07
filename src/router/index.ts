@@ -42,6 +42,12 @@ const routes = [
     meta: { title: '发布模板' }
   },
   {
+    path: '/docs',
+    name: 'Docs',
+    component: () => import('@/views/docs/index.vue'),
+    meta: { title: '帮助文档' }
+  },
+  {
     path: '/settings',
     name: 'Settings',
     component: () => import('@/views/settings/index.vue'),

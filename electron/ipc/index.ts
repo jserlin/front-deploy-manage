@@ -966,5 +966,17 @@ export function registerIpcHandlers(database: DatabaseManager) {
     }
   })
 
+  ipcMain.handle('config:readDoc', async (_event, fileName: string) => {
+    try {
+      const fs = await import('fs')
+      const path = await import('path')
+      const docPath = path.join(process.cwd(), 'doc', fileName)
+      const content = fs.readFileSync(docPath, 'utf-8')
+      return { success: true, data: content }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
   console.log('IPC handlers registered successfully')
 }

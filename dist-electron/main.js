@@ -44,12 +44,12 @@ const crypto = require("crypto");
 function _interopNamespaceDefault(e) {
   const n = Object.create(null, { [Symbol.toStringTag]: { value: "Module" } });
   if (e) {
-    for (const k in e) {
-      if (k !== "default") {
-        const d = Object.getOwnPropertyDescriptor(e, k);
-        Object.defineProperty(n, k, d.get ? d : {
+    for (const k2 in e) {
+      if (k2 !== "default") {
+        const d = Object.getOwnPropertyDescriptor(e, k2);
+        Object.defineProperty(n, k2, d.get ? d : {
           enumerable: true,
-          get: () => e[k]
+          get: () => e[k2]
         });
       }
     }
@@ -59,8 +59,8 @@ function _interopNamespaceDefault(e) {
 }
 const path__namespace = /* @__PURE__ */ _interopNamespaceDefault(path$c);
 var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
-function getDefaultExportFromCjs(x) {
-  return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
+function getDefaultExportFromCjs(x2) {
+  return x2 && x2.__esModule && Object.prototype.hasOwnProperty.call(x2, "default") ? x2["default"] : x2;
 }
 var fs$j = {};
 var universalify$1 = {};
@@ -81,7 +81,7 @@ universalify$1.fromPromise = function(fn) {
     if (typeof cb !== "function") return fn.apply(this, args);
     else {
       args.pop();
-      fn.apply(this, args).then((r) => cb(null, r), cb);
+      fn.apply(this, args).then((r2) => cb(null, r2), cb);
     }
   }, "name", { value: fn.name });
 };
@@ -177,7 +177,7 @@ function patch$1(fs2) {
       var callback;
       if (callback_ && typeof callback_ === "function") {
         var eagCounter = 0;
-        callback = function(er, _, __) {
+        callback = function(er, _2, __) {
           if (er && er.code === "EAGAIN" && eagCounter < 10) {
             eagCounter++;
             return fs$read.call(fs2, fd, buffer, offset, length, position, callback);
@@ -1774,7 +1774,7 @@ var utils = { stringify: stringify$3, stripBom: stripBom$1 };
 let _fs;
 try {
   _fs = gracefulFs;
-} catch (_) {
+} catch (_2) {
   _fs = require$$0$2;
 }
 const universalify = universalify$1;
@@ -2116,7 +2116,7 @@ class DatabaseManager {
     if (!key) return { lastInsertRowid: 0, changes: 0 };
     const colsMatch = sql.match(/\(([^)]+)\)\s*VALUES/i);
     if (!colsMatch || !params) return { lastInsertRowid: 0, changes: 0 };
-    const cols = colsMatch[1].split(",").map((c) => c.trim());
+    const cols = colsMatch[1].split(",").map((c2) => c2.trim());
     const obj = {};
     cols.forEach((col, i) => {
       obj[col] = params[i] !== void 0 ? params[i] : null;
@@ -2135,7 +2135,7 @@ class DatabaseManager {
     if (!key) return { lastInsertRowid: 0, changes: 0 };
     const colsMatch = sql.match(/\(([^)]+)\)\s*VALUES/i);
     if (!colsMatch || !params) return { lastInsertRowid: 0, changes: 0 };
-    const cols = colsMatch[1].split(",").map((c) => c.trim());
+    const cols = colsMatch[1].split(",").map((c2) => c2.trim());
     const obj = {};
     cols.forEach((col, i) => {
       obj[col] = params[i] !== void 0 ? params[i] : null;
@@ -2170,10 +2170,10 @@ class DatabaseManager {
     if (!key || !params) return { lastInsertRowid: 0, changes: 0 };
     const setMatch = sql.match(/SET\s+(.+?)\s+WHERE/i);
     if (!setMatch) return { lastInsertRowid: 0, changes: 0 };
-    const setCols = setMatch[1].split(",").map((c) => c.trim().split("=")[0].trim());
+    const setCols = setMatch[1].split(",").map((c2) => c2.trim().split("=")[0].trim());
     const id = params[params.length - 1];
     const arr = this.data[key];
-    const item = arr.find((r) => r.id === id);
+    const item = arr.find((r2) => r2.id === id);
     if (item) {
       setCols.forEach((col, i) => {
         item[col] = params[i];
@@ -2204,8 +2204,8 @@ function requireMs() {
   var m = s * 60;
   var h = m * 60;
   var d = h * 24;
-  var w = d * 7;
-  var y = d * 365.25;
+  var w2 = d * 7;
+  var y2 = d * 365.25;
   ms = function(val, options) {
     options = options || {};
     var type = typeof val;
@@ -2237,11 +2237,11 @@ function requireMs() {
       case "yrs":
       case "yr":
       case "y":
-        return n * y;
+        return n * y2;
       case "weeks":
       case "week":
       case "w":
-        return n * w;
+        return n * w2;
       case "days":
       case "day":
       case "d":
@@ -2398,8 +2398,8 @@ function requireCommon() {
           }
           return enabledCache;
         },
-        set: (v) => {
-          enableOverride = v;
+        set: (v2) => {
+          enableOverride = v2;
         }
       });
       if (typeof createDebug.init === "function") {
@@ -2606,8 +2606,8 @@ function requireBrowser() {
       if (!this.useColors) {
         return;
       }
-      const c = "color: " + this.color;
-      args.splice(1, 0, c, "color: inherit");
+      const c2 = "color: " + this.color;
+      args.splice(1, 0, c2, "color: inherit");
       let index = 0;
       let lastC = 0;
       args[0].replace(/%[a-zA-Z%]/g, (match) => {
@@ -2619,7 +2619,7 @@ function requireBrowser() {
           lastC = index;
         }
       });
-      args.splice(lastC, 0, c);
+      args.splice(lastC, 0, c2);
     }
     exports$1.log = console.debug || console.log || (() => {
     });
@@ -2634,15 +2634,15 @@ function requireBrowser() {
       }
     }
     function load() {
-      let r;
+      let r2;
       try {
-        r = exports$1.storage.getItem("debug") || exports$1.storage.getItem("DEBUG");
+        r2 = exports$1.storage.getItem("debug") || exports$1.storage.getItem("DEBUG");
       } catch (error) {
       }
-      if (!r && typeof process !== "undefined" && "env" in process) {
-        r = process.env.DEBUG;
+      if (!r2 && typeof process !== "undefined" && "env" in process) {
+        r2 = process.env.DEBUG;
       }
-      return r;
+      return r2;
     }
     function localstorage() {
       try {
@@ -2652,9 +2652,9 @@ function requireBrowser() {
     }
     module2.exports = requireCommon()(exports$1);
     const { formatters } = module2.exports;
-    formatters.j = function(v) {
+    formatters.j = function(v2) {
       try {
-        return JSON.stringify(v);
+        return JSON.stringify(v2);
       } catch (error) {
         return "[UnexpectedJSONParseError]: " + error.message;
       }
@@ -2884,8 +2884,8 @@ function requireNode$1() {
     exports$1.inspectOpts = Object.keys(process.env).filter((key) => {
       return /^debug_/i.test(key);
     }).reduce((obj, key) => {
-      const prop = key.substring(6).toLowerCase().replace(/_([a-z])/g, (_, k) => {
-        return k.toUpperCase();
+      const prop = key.substring(6).toLowerCase().replace(/_([a-z])/g, (_2, k2) => {
+        return k2.toUpperCase();
       });
       let val = process.env[key];
       if (/^(yes|on|true|enabled)$/i.test(val)) {
@@ -2906,8 +2906,8 @@ function requireNode$1() {
     function formatArgs(args) {
       const { namespace: name, useColors: useColors2 } = this;
       if (useColors2) {
-        const c = this.color;
-        const colorCode = "\x1B[3" + (c < 8 ? c : "8;5;" + c);
+        const c2 = this.color;
+        const colorCode = "\x1B[3" + (c2 < 8 ? c2 : "8;5;" + c2);
         const prefix = `  ${colorCode};1m${name} \x1B[0m`;
         args[0] = prefix + args[0].split("\n").join("\n" + prefix);
         args.push(colorCode + "m+" + module2.exports.humanize(this.diff) + "\x1B[0m");
@@ -2943,13 +2943,13 @@ function requireNode$1() {
     }
     module2.exports = requireCommon()(exports$1);
     const { formatters } = module2.exports;
-    formatters.o = function(v) {
+    formatters.o = function(v2) {
       this.inspectOpts.colors = this.useColors;
-      return util2.inspect(v, this.inspectOpts).split("\n").map((str) => str.trim()).join(" ");
+      return util2.inspect(v2, this.inspectOpts).split("\n").map((str) => str.trim()).join(" ");
     };
-    formatters.O = function(v) {
+    formatters.O = function(v2) {
       this.inspectOpts.colors = this.useColors;
-      return util2.inspect(v, this.inspectOpts);
+      return util2.inspect(v2, this.inspectOpts);
     };
   })(node$1, node$1.exports);
   return node$1.exports;
@@ -3007,6 +3007,17 @@ const debug = /* @__PURE__ */ getDefaultExportFromCjs(srcExports$1);
   Object.defineProperty(exports$1, "__esModule", { value: true });
   __export2(src$2);
 })(dist$1);
+const t = /* @__PURE__ */ new WeakMap();
+function c(...n) {
+  const e = new String(n);
+  return t.set(e, n), e;
+}
+function r(n) {
+  return n instanceof String && t.has(n);
+}
+function o(n) {
+  return t.get(n) ?? [];
+}
 var dist = {};
 Object.defineProperty(dist, "__esModule", { value: true });
 var createDeferred = dist.createDeferred = deferred_1 = dist.deferred = void 0;
@@ -3043,6 +3054,363 @@ function deferred() {
 var deferred_1 = dist.deferred = deferred;
 createDeferred = dist.createDeferred = deferred;
 dist.default = deferred;
+function* w(e, t2) {
+  const n = t2 === "global";
+  for (const o2 of e)
+    o2.isGlobal === n && (yield o2);
+}
+const x = /* @__PURE__ */ new Set([
+  "--add",
+  "--edit",
+  "--remove-section",
+  "--rename-section",
+  "--replace-all",
+  "--unset",
+  "--unset-all",
+  "-e"
+]), S = /* @__PURE__ */ new Set([
+  "--get",
+  "--get-all",
+  "--get-color",
+  "--get-colorbool",
+  "--get-regexp",
+  "--get-urlmatch",
+  "--list",
+  "-l"
+]), k = /* @__PURE__ */ new Set([
+  "edit",
+  "remove-section",
+  "rename-section",
+  "set",
+  "unset"
+]), y = /* @__PURE__ */ new Set(["get", "get-color", "get-colorbool", "list"]);
+function C(e, t2) {
+  var _a2;
+  for (const { name: o2 } of w(e, "task")) {
+    if (x.has(o2))
+      return f(true, t2);
+    if (S.has(o2))
+      return f(false, t2);
+  }
+  const n = (_a2 = t2.at(0)) == null ? void 0 : _a2.toLowerCase();
+  return n === void 0 ? null : k.has(n) ? f(true, t2.slice(1)) : y.has(n) ? f(false, t2.slice(1)) : t2.length === 1 ? f(false, t2) : f(true, t2);
+}
+function f(e = false, t2 = []) {
+  var _a2;
+  const n = (_a2 = t2.at(0)) == null ? void 0 : _a2.toLowerCase();
+  return n === void 0 ? null : {
+    isWrite: e,
+    isRead: !e,
+    key: n,
+    value: t2.at(1)
+  };
+}
+function N(e, t2) {
+  return t2.isWrite && t2.value !== void 0 ? { key: t2.key, value: t2.value, scope: e } : { key: t2.key, scope: e };
+}
+function P(e) {
+  const t2 = (e == null ? void 0 : e.indexOf("=")) || -1;
+  return !e || t2 < 0 ? null : {
+    key: e.slice(0, t2).trim().toLowerCase(),
+    value: e.slice(t2 + 1)
+  };
+}
+function U(e) {
+  for (const { name: t2 } of w(e, "task"))
+    switch (t2) {
+      case "--global":
+        return "global";
+      case "--system":
+        return "system";
+      case "--worktree":
+        return "worktree";
+      case "--local":
+        return "local";
+      case "--file":
+      case "-f":
+        return "file";
+    }
+  return "local";
+}
+function A({ name: e }) {
+  if (e === "-c" || e === "--config")
+    return "inline";
+  if (e === "--config-env")
+    return "env";
+}
+function* F(e) {
+  for (const t2 of e) {
+    const n = A(t2), o2 = n && P(t2.value);
+    o2 && (yield {
+      ...o2,
+      scope: n
+    });
+  }
+}
+function M(e, t2, n) {
+  const o2 = {
+    read: [],
+    write: [...F(t2)]
+  };
+  return e === "config" && G(
+    o2,
+    U(t2),
+    C(t2, n)
+  ), o2;
+}
+function G(e, t2, n) {
+  if (n === null)
+    return;
+  const o2 = N(t2, n);
+  n.isWrite ? e.write.push(o2) : e.read.push(o2);
+}
+const v = {
+  short: /* @__PURE__ */ new Map([
+    ["c", true]
+    //  -c <k=v>    set config key for this invocation
+  ])
+}, O = {
+  short: new Map([
+    ["C", true],
+    //  -C <path>   change working directory
+    ["P", false],
+    // -P          no pager (alias for --no-pager)
+    ["h", false],
+    // -h          help
+    ["p", false],
+    // -p          paginate
+    ["v", false],
+    // -v          version
+    ...v.short.entries()
+  ]),
+  long: /* @__PURE__ */ new Set([
+    "attr-source",
+    "config-env",
+    "exec-path",
+    "git-dir",
+    "list-cmds",
+    "namespace",
+    "super-prefix",
+    "work-tree"
+  ])
+}, E = {
+  clone: {
+    short: /* @__PURE__ */ new Map([
+      ["b", true],
+      // -b <branch>
+      ["j", true],
+      // -j <n>          parallel jobs
+      ["l", false],
+      // -l local
+      ["n", false],
+      // -n no-checkout
+      ["o", true],
+      // -o <name>       remote name
+      ["q", false],
+      // -q quiet
+      ["s", false],
+      // -s shared
+      ["u", true]
+      // -u <upload-pack>
+    ]),
+    long: /* @__PURE__ */ new Set(["branch", "config", "jobs", "origin", "upload-pack", "u"])
+  },
+  commit: {
+    short: /* @__PURE__ */ new Map([
+      ["C", true],
+      // -C <commit>  reuse message
+      ["F", true],
+      // -F <file>    read message from file
+      ["c", true],
+      // -c <commit>  reedit message
+      ["m", true],
+      // -m <msg>
+      ["t", true]
+      // -t <template>
+    ]),
+    long: /* @__PURE__ */ new Set(["file", "message", "reedit-message", "reuse-message", "template"])
+  },
+  config: {
+    short: /* @__PURE__ */ new Map([
+      ["e", false],
+      // -e  open editor
+      ["f", true],
+      //  -f <file>
+      ["l", false]
+      // -l  list
+    ]),
+    long: /* @__PURE__ */ new Set(["blob", "comment", "default", "file", "type", "value"])
+  },
+  fetch: {
+    short: /* @__PURE__ */ new Map(),
+    long: /* @__PURE__ */ new Set(["upload-pack"])
+  },
+  pull: {
+    short: /* @__PURE__ */ new Map(),
+    long: /* @__PURE__ */ new Set(["upload-pack"])
+  },
+  push: {
+    short: /* @__PURE__ */ new Map(),
+    long: /* @__PURE__ */ new Set(["exec", "receive-pack"])
+  }
+}, I = { short: /* @__PURE__ */ new Map(), long: /* @__PURE__ */ new Set() };
+function L(e) {
+  const t2 = E[e ?? ""] ?? I;
+  return {
+    short: new Map([...v.short.entries(), ...t2.short.entries()]),
+    long: t2.long
+  };
+}
+function b(e, t2 = O) {
+  if (e.startsWith("--")) {
+    const n = e.indexOf("=");
+    if (n > 2)
+      return [{ name: e.slice(0, n), value: e.slice(n + 1), needsNext: false }];
+    const o2 = e.slice(2);
+    return [{ name: e, needsNext: t2.long.has(o2) }];
+  }
+  if (e.length === 2) {
+    const n = e.charAt(1), o2 = t2.short.get(n);
+    return [{ name: e, needsNext: o2 === true }];
+  }
+  return R(e, t2.short);
+}
+function R(e, t2) {
+  const n = e.slice(1).split(""), o2 = [];
+  for (let a = 0; a < n.length; a++) {
+    const s = n[a], r2 = t2.get(s);
+    if (r2 === void 0)
+      return [{ name: e, needsNext: false }];
+    if (r2) {
+      const l = n.slice(a + 1).join("");
+      if (l && ![...l].every((h) => t2.has(h)))
+        return o2.push({ name: `-${s}`, value: l, needsNext: false }), o2;
+    }
+    o2.push({ name: `-${s}`, needsNext: r2 });
+  }
+  return o2;
+}
+function W(e, t2 = []) {
+  let n = 0;
+  for (; n < e.length; ) {
+    const o2 = String(e[n]);
+    if (!o2.startsWith("-") || o2.length < 2) break;
+    const a = b(o2);
+    let s = n + 1;
+    for (const r2 of a) {
+      const l = {
+        name: r2.name,
+        value: r2.value,
+        absorbedNext: false,
+        isGlobal: true
+      };
+      r2.needsNext && l.value === void 0 && s < e.length && (l.value = String(e[s]), l.absorbedNext = true, s++), t2.push(l);
+    }
+    n = s;
+  }
+  return { flags: t2, taskIndex: n };
+}
+function _(e, t2, n = []) {
+  const o$1 = L(t2), a = [], s = [];
+  let r$1 = 0;
+  for (; r$1 < e.length; ) {
+    const l = e[r$1];
+    if (r(l)) {
+      s.push(...o(l)), r$1++;
+      continue;
+    }
+    const u2 = String(l);
+    if (u2 === "--") {
+      for (let c2 = r$1 + 1; c2 < e.length; c2++) {
+        const i = e[c2];
+        r(i) ? s.push(...o(i)) : s.push(String(i));
+      }
+      break;
+    }
+    if (!u2.startsWith("-") || u2.length < 2) {
+      a.push(u2), r$1++;
+      continue;
+    }
+    const h = b(u2, o$1);
+    let d = r$1 + 1;
+    for (const c2 of h) {
+      const i = {
+        name: c2.name,
+        value: c2.value,
+        absorbedNext: false,
+        isGlobal: false
+      };
+      c2.needsNext && i.value === void 0 && d < e.length && !r(e[d]) && (i.value = String(e[d]), i.absorbedNext = true, d++), n.push(i);
+    }
+    r$1 = d;
+  }
+  return { flags: n, positionals: a, pathspecs: s };
+}
+function* T({ write: e }) {
+  for (const t2 of e)
+    for (const n of $) {
+      const o2 = n(t2.key);
+      o2 && (yield o2);
+    }
+}
+function g(e, t2, n = String(e)) {
+  const o2 = typeof e == "string" ? new RegExp(`\\s*${e}`, "i") : e;
+  return function(s) {
+    if (o2.test(s))
+      return {
+        category: t2,
+        message: `Configuring ${n} is not permitted without enabling ${t2}`
+      };
+  };
+}
+const $ = [
+  g(
+    /^\s*protocol(.[a-z]+)?.allow/i,
+    "allowUnsafeProtocolOverride",
+    "protocol.allow"
+  ),
+  g("core.sshCommand", "allowUnsafeSshCommand"),
+  g("core.fsmonitor", "allowUnsafeFsMonitor"),
+  g("core.gitProxy", "allowUnsafeGitProxy"),
+  g("core.hooksPath", "allowUnsafeHooksPath"),
+  g("diff.external", "allowUnsafeDiffExternal")
+];
+function* j(e, t2) {
+  for (const n of t2)
+    /^--(upload|receive)-pack/.test(n.name) && (yield {
+      category: "allowUnsafePack",
+      message: "Use of --upload-pack or --receive-pack is not permitted without enabling allowUnsafePack"
+    }), e === "clone" && (/^-\w*u/.test(n.name) || n.name === "--u") && (yield {
+      category: "allowUnsafePack",
+      message: "Use of clone with option -u is not permitted without enabling allowUnsafePack"
+    }), e === "push" && /^--exec/.test(n.name) && (yield {
+      category: "allowUnsafePack",
+      message: "Use of push with option --exec is not permitted without enabling allowUnsafePack"
+    });
+}
+function B(e, t2, n) {
+  const o2 = [
+    ...j(e, t2),
+    ...T(n)
+  ];
+  return {
+    categories: o2.reduce((s, r2) => s.add(r2.category), /* @__PURE__ */ new Set()),
+    vulnerabilities: o2
+  };
+}
+function V(...e) {
+  const { flags: t2, taskIndex: n } = W(e), o2 = n < e.length ? String(e[n]).toLowerCase() : null, a = o2 !== null ? e.slice(n + 1) : [], { positionals: s, pathspecs: r2 } = _(a, o2, t2), l = M(o2, t2, s);
+  return {
+    task: o2,
+    flags: t2.map(D),
+    paths: r2,
+    config: l,
+    vulnerabilities: B(o2, t2, l)
+  };
+}
+function D({ value: e, name: t2 }) {
+  return e !== void 0 ? { name: t2, value: e } : { name: t2 };
+}
 var __defProp2 = Object.defineProperty;
 var __getOwnPropDesc2 = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames2 = Object.getOwnPropertyNames;
@@ -3066,23 +3434,6 @@ var __copyProps2 = (to, from, except, desc) => {
   return to;
 };
 var __toCommonJS = (mod) => __copyProps2(__defProp2({}, "__esModule", { value: true }), mod);
-function pathspec(...paths) {
-  const key = new String(paths);
-  cache.set(key, paths);
-  return key;
-}
-function isPathSpec(path2) {
-  return path2 instanceof String && cache.has(path2);
-}
-function toPaths(pathSpec) {
-  return cache.get(pathSpec) || [];
-}
-var cache;
-var init_pathspec = __esm({
-  "src/lib/args/pathspec.ts"() {
-    cache = /* @__PURE__ */ new WeakMap();
-  }
-});
 var GitError;
 var init_git_error = __esm({
   "src/lib/errors/git-error.ts"() {
@@ -3252,7 +3603,7 @@ function filterType(input, filter, def) {
   return arguments.length > 2 ? def : void 0;
 }
 function filterPrimitives(input, omit) {
-  const type = isPathSpec(input) ? "string" : typeof input;
+  const type = r(input) ? "string" : typeof input;
   return /number|string|boolean/.test(type) && (!omit || !omit.includes(type));
 }
 function filterPlainObject(input) {
@@ -3264,7 +3615,6 @@ function filterFunction(input) {
 var filterArray, filterNumber, filterString, filterStringOrStringArray, filterHasLength;
 var init_argument_filters = __esm({
   "src/lib/utils/argument-filters.ts"() {
-    init_pathspec();
     init_util();
     filterArray = (input) => {
       return Array.isArray(input);
@@ -3273,7 +3623,7 @@ var init_argument_filters = __esm({
       return typeof input === "number";
     };
     filterString = (input) => {
-      return typeof input === "string" || isPathSpec(input);
+      return typeof input === "string" || r(input);
     };
     filterStringOrStringArray = (input) => {
       return filterString(input) || Array.isArray(input) && input.every(filterString);
@@ -3367,7 +3717,7 @@ function createInstanceConfig(...options) {
   const baseDir = process.cwd();
   const config = Object.assign(
     { baseDir, ...defaultOptions },
-    ...options.filter((o) => typeof o === "object" && o)
+    ...options.filter((o2) => typeof o2 === "object" && o2)
   );
   config.baseDir = config.baseDir || baseDir;
   config.trimmed = config.trimmed === true;
@@ -3390,14 +3740,14 @@ function appendTaskOptions(options, commands = []) {
   }
   return Object.keys(options).reduce((commands2, key) => {
     const value = options[key];
-    if (isPathSpec(value)) {
+    if (r(value)) {
       commands2.push(value);
     } else if (filterPrimitives(value, ["boolean"])) {
       commands2.push(key + "=" + value);
     } else if (Array.isArray(value)) {
-      for (const v of value) {
-        if (!filterPrimitives(v, ["string", "number"])) {
-          commands2.push(key + "=" + v);
+      for (const v2 of value) {
+        if (!filterPrimitives(v2, ["string", "number"])) {
+          commands2.push(key + "=" + v2);
         }
       }
     } else {
@@ -3435,7 +3785,6 @@ var init_task_options = __esm({
   "src/lib/utils/task-options.ts"() {
     init_argument_filters();
     init_util();
-    init_pathspec();
   }
 });
 function callTaskParser(parser4, streams) {
@@ -5055,7 +5404,7 @@ function parseLogOptions(opt = {}, customArgs = []) {
     suffix.push(`${opt.from || ""}${rangeOperator}${opt.to || ""}`);
   }
   if (filterString(opt.file)) {
-    command.push("--follow", pathspec(opt.file));
+    command.push("--follow", c(opt.file));
   }
   appendTaskOptions(userOptions(opt), command);
   return {
@@ -5097,7 +5446,6 @@ var excludeOptions;
 var init_log = __esm({
   "src/lib/tasks/log.ts"() {
     init_log_format();
-    init_pathspec();
     init_parse_list_log_summary();
     init_utils();
     init_task();
@@ -5561,7 +5909,7 @@ function parser3(indexX, indexY, handler) {
   return [`${indexX}${indexY}`, handler];
 }
 function conflicts(indexX, ...indexY) {
-  return indexY.map((y) => parser3(indexX, y, (result, file2) => result.conflicted.push(file2)));
+  return indexY.map((y2) => parser3(indexX, y2, (result, file2) => result.conflicted.push(file2)));
 }
 function splitLine(result, lineStr) {
   const trimmed2 = lineStr.trim();
@@ -5843,11 +6191,10 @@ var init_clone = __esm({
   "src/lib/tasks/clone.ts"() {
     init_task();
     init_utils();
-    init_pathspec();
     cloneTask = (repo, directory, customArgs) => {
       const commands = ["clone", ...customArgs];
-      filterString(repo) && commands.push(pathspec(repo));
-      filterString(directory) && commands.push(pathspec(directory));
+      filterString(repo) && commands.push(c(repo));
+      filterString(directory) && commands.push(c(directory));
       return straightThroughStringTask(commands);
     };
     cloneMirrorTask = (repo, directory, customArgs) => {
@@ -6246,7 +6593,7 @@ function deleteBranchTask(branch, forceDelete = false) {
     parser(stdOut, stdErr) {
       return parseBranchDeletions(stdOut, stdErr).branches[branch];
     },
-    onError({ exitCode, stdErr, stdOut }, error, _, fail) {
+    onError({ exitCode, stdErr, stdOut }, error, _2, fail) {
       if (!hasBranchDeletionError(String(error), exitCode)) {
         return fail(error);
       }
@@ -6564,16 +6911,16 @@ var init_sub_module = __esm({
     init_task();
   }
 });
-function singleSorted(a, b) {
+function singleSorted(a, b2) {
   const aIsNum = Number.isNaN(a);
-  const bIsNum = Number.isNaN(b);
+  const bIsNum = Number.isNaN(b2);
   if (aIsNum !== bIsNum) {
     return aIsNum ? 1 : -1;
   }
-  return aIsNum ? sorted(a, b) : 0;
+  return aIsNum ? sorted(a, b2) : 0;
 }
-function sorted(a, b) {
-  return a === b ? 0 : a > b ? 1 : -1;
+function sorted(a, b2) {
+  return a === b2 ? 0 : a > b2 ? 1 : -1;
 }
 function trimmed(input) {
   return input.trim();
@@ -7022,7 +7369,6 @@ var require_git = __commonJS({
     module2.exports = Git2;
   }
 });
-init_pathspec();
 init_git_error();
 var GitConstructError = class extends GitError {
   constructor(config, message) {
@@ -7072,74 +7418,16 @@ function abortPlugin(signal) {
   };
   return [onSpawnBefore, onSpawnAfter];
 }
-function isConfigSwitch(arg) {
-  return typeof arg === "string" && arg.trim().toLowerCase() === "-c";
-}
-function isCloneUploadPackSwitch(char, arg) {
-  if (typeof arg !== "string" || !arg.includes(char)) {
-    return false;
-  }
-  const cleaned = arg.trim().replace(/\0/g, "");
-  return /^(--no)?-{1,2}[\dlsqvnobucj]+(\s|$)/.test(cleaned);
-}
-function preventConfigBuilder(config, setting, message = String(config)) {
-  const regex = typeof config === "string" ? new RegExp(`\\s*${config}`, "i") : config;
-  return function preventCommand(options, arg, next) {
-    if (options[setting] !== true && isConfigSwitch(arg) && regex.test(next)) {
-      throw new GitPluginError(
-        void 0,
-        "unsafe",
-        `Configuring ${message} is not permitted without enabling ${setting}`
-      );
-    }
-  };
-}
-var preventUnsafeConfig = [
-  preventConfigBuilder(
-    /^\s*protocol(.[a-z]+)?.allow/i,
-    "allowUnsafeProtocolOverride",
-    "protocol.allow"
-  ),
-  preventConfigBuilder("core.sshCommand", "allowUnsafeSshCommand"),
-  preventConfigBuilder("core.gitProxy", "allowUnsafeGitProxy"),
-  preventConfigBuilder("core.hooksPath", "allowUnsafeHooksPath"),
-  preventConfigBuilder("diff.external", "allowUnsafeDiffExternal")
-];
-function preventUploadPack(arg, method) {
-  if (/^\s*--(upload|receive)-pack/.test(arg)) {
-    throw new GitPluginError(
-      void 0,
-      "unsafe",
-      `Use of --upload-pack or --receive-pack is not permitted without enabling allowUnsafePack`
-    );
-  }
-  if (method === "clone" && isCloneUploadPackSwitch("u", arg)) {
-    throw new GitPluginError(
-      void 0,
-      "unsafe",
-      `Use of clone with option -u is not permitted without enabling allowUnsafePack`
-    );
-  }
-  if (method === "push" && /^\s*--exec\b/.test(arg)) {
-    throw new GitPluginError(
-      void 0,
-      "unsafe",
-      `Use of push with option --exec is not permitted without enabling allowUnsafePack`
-    );
-  }
-}
-function blockUnsafeOperationsPlugin({
-  allowUnsafePack = false,
-  ...options
-} = {}) {
+function blockUnsafeOperationsPlugin(options = {}) {
   return {
     type: "spawn.args",
-    action(args, context) {
-      args.forEach((current, index) => {
-        const next = index < args.length ? args[index + 1] : "";
-        allowUnsafePack || preventUploadPack(current, context.method);
-        preventUnsafeConfig.forEach((helper) => helper(options, current, next));
-      });
+    action(args) {
+      const parsed = V(...args);
+      for (const vulnerability of parsed.vulnerabilities.vulnerabilities) {
+        if (options[vulnerability.category] !== true) {
+          throw new GitPluginError(void 0, "unsafe", vulnerability.message);
+        }
+      }
       return args;
     }
   };
@@ -7408,7 +7696,6 @@ function timeoutPlugin({
     };
   }
 }
-init_pathspec();
 function suffixPathsPlugin() {
   return {
     type: "spawn.args",
@@ -7420,13 +7707,13 @@ function suffixPathsPlugin() {
       }
       for (let i = 0; i < data.length; i++) {
         const param = data[i];
-        if (isPathSpec(param)) {
-          append2(toPaths(param));
+        if (r(param)) {
+          append2(o(param));
           continue;
         }
         if (param === "--") {
           append2(
-            data.slice(i + 1).flatMap((item) => isPathSpec(item) && toPaths(item) || item)
+            data.slice(i + 1).flatMap((item) => r(item) && o(item) || item)
           );
           break;
         }
@@ -7490,7 +7777,7 @@ function requireElectronLogPreload() {
       if (!ipcRenderer) {
         return;
       }
-      ipcRenderer.on("__ELECTRON_LOG_IPC__", (_, message) => {
+      ipcRenderer.on("__ELECTRON_LOG_IPC__", (_2, message) => {
         window.postMessage({ cmd: "message", ...message });
       });
       ipcRenderer.invoke("__ELECTRON_LOG__", { cmd: "getOptions" }).catch((e) => console.error(new Error(
@@ -8514,7 +8801,7 @@ function requireElectronExternalApi() {
         });
         (_b2 = this.electron.app) == null ? void 0 : _b2.off("web-contents-created", onWebContentsCreated);
       };
-      function onWebContentsCreated(_, webContents) {
+      function onWebContentsCreated(_2, webContents) {
         webContents.on(eventName, handler);
       }
     }
@@ -8992,7 +9279,7 @@ function requireEventLogger() {
       if (!eventMap || typeof eventMap !== "object") {
         return [];
       }
-      return Object.entries(eventMap).filter(([_, listen]) => listen).map(([eventName]) => eventName);
+      return Object.entries(eventMap).filter(([_2, listen]) => listen).map(([eventName]) => eventName);
     }
     getWebContentsDetails(webContents) {
       if (!(webContents == null ? void 0 : webContents.loadURL)) {
@@ -9755,7 +10042,7 @@ function requireFile() {
         writeOptions: transport.writeOptions
       });
     }
-    function readAllLogs({ fileFilter = (f) => f.endsWith(".log") } = {}) {
+    function readAllLogs({ fileFilter = (f2) => f2.endsWith(".log") } = {}) {
       initializeOnFirstAccess();
       const logsPath = path2.dirname(transport.resolvePathFn(pathVariables));
       if (!fs2.existsSync(logsPath)) {
@@ -9953,7 +10240,7 @@ function requireMain() {
     initializeFn: initialize2
   });
   main = defaultLogger;
-  externalApi.onIpc("__ELECTRON_LOG__", (_, message) => {
+  externalApi.onIpc("__ELECTRON_LOG__", (_2, message) => {
     if (message.scope) {
       defaultLogger.Logger.getInstance(message).scope(message.scope);
     }
@@ -9963,7 +10250,7 @@ function requireMain() {
       date: date.getTime() ? date : /* @__PURE__ */ new Date()
     });
   });
-  externalApi.onIpcInvoke("__ELECTRON_LOG__", (_, { cmd = "", logId }) => {
+  externalApi.onIpcInvoke("__ELECTRON_LOG__", (_2, { cmd = "", logId }) => {
     switch (cmd) {
       case "getOptions": {
         const logger2 = defaultLogger.Logger.getInstance({ logId });
@@ -10052,7 +10339,7 @@ class GitService {
         git.getRemotes(true),
         git.revparse(["--abbrev-ref", "HEAD"])
       ]);
-      const originRemote = remotes.find((r) => r.name === "origin");
+      const originRemote = remotes.find((r2) => r2.name === "origin");
       return {
         repo: ((_a2 = originRemote == null ? void 0 : originRemote.refs) == null ? void 0 : _a2.fetch) || "",
         branch: branch.trim(),
@@ -10102,7 +10389,7 @@ class GitService {
       return {
         current: status.current,
         tracking: status.tracking,
-        files: status.files.map((f) => f.path),
+        files: status.files.map((f2) => f2.path),
         staged: status.staged,
         ahead: status.ahead,
         behind: status.behind
@@ -10938,7 +11225,7 @@ function registerIpcHandlers(database2) {
     try {
       const projects = db.all("projects");
       const groups = db.all("groups");
-      const groupMap = new Map(groups.map((g) => [g.id, g]));
+      const groupMap = new Map(groups.map((g2) => [g2.id, g2]));
       const mapped = projects.map((p) => {
         const group = p.group_id ? groupMap.get(p.group_id) : null;
         return {
@@ -10969,7 +11256,7 @@ function registerIpcHandlers(database2) {
       const p = db.get("SELECT * FROM projects WHERE id=?", [id]);
       if (!p) return { success: false, error: "Project not found" };
       const groups = db.all("groups");
-      const group = p.group_id ? groups.find((g) => g.id === p.group_id) : null;
+      const group = p.group_id ? groups.find((g2) => g2.id === p.group_id) : null;
       const mapped = {
         id: p.id,
         name: p.name,
@@ -11056,13 +11343,13 @@ function registerIpcHandlers(database2) {
   require$$0$6.ipcMain.handle("group:getAll", async () => {
     try {
       const rows = db.all("groups");
-      const mapped = rows.map((g) => ({
-        id: g.id,
-        name: g.name,
-        color: g.color || "#409EFF",
-        sortOrder: g.sort_order || 0,
-        createdAt: g.created_at,
-        updatedAt: g.updated_at
+      const mapped = rows.map((g2) => ({
+        id: g2.id,
+        name: g2.name,
+        color: g2.color || "#409EFF",
+        sortOrder: g2.sort_order || 0,
+        createdAt: g2.created_at,
+        updatedAt: g2.updated_at
       }));
       return { success: true, data: mapped };
     } catch (error) {
@@ -11102,17 +11389,17 @@ function registerIpcHandlers(database2) {
   require$$0$6.ipcMain.handle("serverCredential:getAll", async () => {
     try {
       const rows = db.all("server_credentials");
-      const mapped = rows.map((c) => ({
-        id: c.id,
-        name: c.name,
-        host: c.host,
-        port: c.port,
-        username: c.username,
-        authType: c.auth_type || "password",
-        environment: c.environment || "dev",
-        description: c.description || "",
-        createdAt: c.created_at,
-        updatedAt: c.updated_at
+      const mapped = rows.map((c2) => ({
+        id: c2.id,
+        name: c2.name,
+        host: c2.host,
+        port: c2.port,
+        username: c2.username,
+        authType: c2.auth_type || "password",
+        environment: c2.environment || "dev",
+        description: c2.description || "",
+        createdAt: c2.created_at,
+        updatedAt: c2.updated_at
       }));
       return { success: true, data: mapped };
     } catch (error) {
@@ -11121,19 +11408,19 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("serverCredential:getById", async (event, id) => {
     try {
-      const c = db.get("SELECT * FROM server_credentials WHERE id=?", [id]);
-      if (!c) return { success: false, error: "Credential not found" };
+      const c2 = db.get("SELECT * FROM server_credentials WHERE id=?", [id]);
+      if (!c2) return { success: false, error: "Credential not found" };
       const mapped = {
-        id: c.id,
-        name: c.name,
-        host: c.host,
-        port: c.port,
-        username: c.username,
-        authType: c.auth_type || "password",
-        environment: c.environment || "dev",
-        description: c.description || "",
-        createdAt: c.created_at,
-        updatedAt: c.updated_at
+        id: c2.id,
+        name: c2.name,
+        host: c2.host,
+        port: c2.port,
+        username: c2.username,
+        authType: c2.auth_type || "password",
+        environment: c2.environment || "dev",
+        description: c2.description || "",
+        createdAt: c2.created_at,
+        updatedAt: c2.updated_at
       };
       return { success: true, data: mapped };
     } catch (error) {
@@ -11203,16 +11490,16 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("serverCredential:testConnection", async (event, id) => {
     try {
-      const c = db.get("SELECT * FROM server_credentials WHERE id=?", [id]);
-      if (!c) return { success: false, message: "凭证不存在" };
+      const c2 = db.get("SELECT * FROM server_credentials WHERE id=?", [id]);
+      if (!c2) return { success: false, message: "凭证不存在" };
       const credential = {
-        host: c.host,
-        port: c.port,
-        username: c.username,
-        authType: c.auth_type || "password",
-        password: c.password || "",
-        privateKey: c.private_key || "",
-        passphrase: c.passphrase || ""
+        host: c2.host,
+        port: c2.port,
+        username: c2.username,
+        authType: c2.auth_type || "password",
+        password: c2.password || "",
+        privateKey: c2.private_key || "",
+        passphrase: c2.passphrase || ""
       };
       const result = await sshService.testConnection(credential);
       return result;
@@ -11223,15 +11510,15 @@ function registerIpcHandlers(database2) {
   require$$0$6.ipcMain.handle("svnCredential:getAll", async () => {
     try {
       const rows = db.all("svn_credentials");
-      const mapped = rows.map((c) => ({
-        id: c.id,
-        name: c.name,
-        svnUrl: c.svn_url || "",
-        username: c.username,
-        environment: c.environment || "dev",
-        description: c.description || "",
-        createdAt: c.created_at,
-        updatedAt: c.updated_at
+      const mapped = rows.map((c2) => ({
+        id: c2.id,
+        name: c2.name,
+        svnUrl: c2.svn_url || "",
+        username: c2.username,
+        environment: c2.environment || "dev",
+        description: c2.description || "",
+        createdAt: c2.created_at,
+        updatedAt: c2.updated_at
       }));
       return { success: true, data: mapped };
     } catch (error) {
@@ -11240,17 +11527,17 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("svnCredential:getById", async (event, id) => {
     try {
-      const c = db.get("SELECT * FROM svn_credentials WHERE id=?", [id]);
-      if (!c) return { success: false, error: "Credential not found" };
+      const c2 = db.get("SELECT * FROM svn_credentials WHERE id=?", [id]);
+      if (!c2) return { success: false, error: "Credential not found" };
       const mapped = {
-        id: c.id,
-        name: c.name,
-        svnUrl: c.svn_url || "",
-        username: c.username,
-        environment: c.environment || "dev",
-        description: c.description || "",
-        createdAt: c.created_at,
-        updatedAt: c.updated_at
+        id: c2.id,
+        name: c2.name,
+        svnUrl: c2.svn_url || "",
+        username: c2.username,
+        environment: c2.environment || "dev",
+        description: c2.description || "",
+        createdAt: c2.created_at,
+        updatedAt: c2.updated_at
       };
       return { success: true, data: mapped };
     } catch (error) {
@@ -11293,12 +11580,12 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("svnCredential:testConnection", async (event, id) => {
     try {
-      const c = db.get("SELECT * FROM svn_credentials WHERE id=?", [id]);
-      if (!c) return { success: false, message: "凭证不存在" };
+      const c2 = db.get("SELECT * FROM svn_credentials WHERE id=?", [id]);
+      if (!c2) return { success: false, message: "凭证不存在" };
       const credential = {
-        svnUrl: c.svn_url || "",
-        username: c.username,
-        password: c.password || ""
+        svnUrl: c2.svn_url || "",
+        username: c2.username,
+        password: c2.password || ""
       };
       const result = await svnService.testConnection(credential);
       return result;
@@ -11358,11 +11645,11 @@ function registerIpcHandlers(database2) {
       const { project, svnPath, commitMessage, backupEnabled, needBuild = true, branch } = config;
       const svnCredential = config.svnCredential;
       if (svnCredential && svnCredential.id) {
-        const c = db.get("SELECT * FROM svn_credentials WHERE id=?", [svnCredential.id]);
-        if (c) {
+        const c2 = db.get("SELECT * FROM svn_credentials WHERE id=?", [svnCredential.id]);
+        if (c2) {
           Object.assign(svnCredential, {
-            svnUrl: c.svn_url || "",
-            password: c.password || ""
+            svnUrl: c2.svn_url || "",
+            password: c2.password || ""
           });
         }
       }
@@ -11433,13 +11720,13 @@ function registerIpcHandlers(database2) {
       const { project, remotePath, backupEnabled, needBuild = true } = config;
       const serverCredential = config.serverCredential;
       if (serverCredential && serverCredential.id) {
-        const c = db.get("SELECT * FROM server_credentials WHERE id=?", [serverCredential.id]);
-        if (c) {
+        const c2 = db.get("SELECT * FROM server_credentials WHERE id=?", [serverCredential.id]);
+        if (c2) {
           Object.assign(serverCredential, {
-            authType: c.auth_type || "password",
-            password: c.password || "",
-            privateKey: c.private_key || "",
-            passphrase: c.passphrase || ""
+            authType: c2.auth_type || "password",
+            password: c2.password || "",
+            privateKey: c2.private_key || "",
+            passphrase: c2.passphrase || ""
           });
         }
       }
@@ -11516,22 +11803,22 @@ function registerIpcHandlers(database2) {
       log2("加载凭证信息...");
       for (const target of targets) {
         if (target.type === "server" && target.credential && target.credential.id) {
-          const c = db.get("SELECT * FROM server_credentials WHERE id=?", [target.credential.id]);
-          if (c) {
+          const c2 = db.get("SELECT * FROM server_credentials WHERE id=?", [target.credential.id]);
+          if (c2) {
             Object.assign(target.credential, {
-              authType: c.auth_type || "password",
-              password: c.password || "",
-              privateKey: c.private_key || "",
-              passphrase: c.passphrase || ""
+              authType: c2.auth_type || "password",
+              password: c2.password || "",
+              privateKey: c2.private_key || "",
+              passphrase: c2.passphrase || ""
             });
           }
         }
         if (target.type === "svn" && target.credential && target.credential.id) {
-          const c = db.get("SELECT * FROM svn_credentials WHERE id=?", [target.credential.id]);
-          if (c) {
+          const c2 = db.get("SELECT * FROM svn_credentials WHERE id=?", [target.credential.id]);
+          if (c2) {
             Object.assign(target.credential, {
-              svnUrl: c.svn_url || "",
-              password: c.password || ""
+              svnUrl: c2.svn_url || "",
+              password: c2.password || ""
             });
           }
         }
@@ -11648,7 +11935,7 @@ function registerIpcHandlers(database2) {
         createdAt: h.created_at,
         updatedAt: h.updated_at
       }));
-      mapped.sort((a, b) => b.id - a.id);
+      mapped.sort((a, b2) => b2.id - a.id);
       return { success: true, data: mapped };
     } catch (error) {
       return { success: false, error: error.message };
@@ -11659,24 +11946,24 @@ function registerIpcHandlers(database2) {
       const rows = db.all("deploy_templates");
       const projects = db.all("projects");
       const projectMap = new Map(projects.map((p) => [p.id, p.name]));
-      const mapped = rows.map((t) => ({
-        id: t.id,
-        name: t.name,
-        projectId: t.project_id,
-        projectName: projectMap.get(t.project_id) || "",
-        deployType: t.deploy_type,
-        serverCredentialId: t.server_credential_id,
-        svnCredentialId: t.svn_credential_id,
-        remotePath: t.remote_path || "",
-        svnPath: t.svn_path || "",
-        backupEnabled: t.backup_enabled === 1,
-        preCommand: t.pre_command || "",
-        postCommand: t.post_command || "",
-        description: t.description || "",
-        createdAt: t.created_at,
-        updatedAt: t.updated_at
+      const mapped = rows.map((t2) => ({
+        id: t2.id,
+        name: t2.name,
+        projectId: t2.project_id,
+        projectName: projectMap.get(t2.project_id) || "",
+        deployType: t2.deploy_type,
+        serverCredentialId: t2.server_credential_id,
+        svnCredentialId: t2.svn_credential_id,
+        remotePath: t2.remote_path || "",
+        svnPath: t2.svn_path || "",
+        backupEnabled: t2.backup_enabled === 1,
+        preCommand: t2.pre_command || "",
+        postCommand: t2.post_command || "",
+        description: t2.description || "",
+        createdAt: t2.created_at,
+        updatedAt: t2.updated_at
       }));
-      mapped.sort((a, b) => b.id - a.id);
+      mapped.sort((a, b2) => b2.id - a.id);
       return { success: true, data: mapped };
     } catch (error) {
       return { success: false, error: error.message };
@@ -11684,26 +11971,26 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("template:getById", async (event, id) => {
     try {
-      const t = db.get("SELECT * FROM deploy_templates WHERE id=?", [id]);
-      if (!t) return { success: false, error: "Template not found" };
+      const t2 = db.get("SELECT * FROM deploy_templates WHERE id=?", [id]);
+      if (!t2) return { success: false, error: "Template not found" };
       const projects = db.all("projects");
       const projectMap = new Map(projects.map((p) => [p.id, p.name]));
       const mapped = {
-        id: t.id,
-        name: t.name,
-        projectId: t.project_id,
-        projectName: projectMap.get(t.project_id) || "",
-        deployType: t.deploy_type,
-        serverCredentialId: t.server_credential_id,
-        svnCredentialId: t.svn_credential_id,
-        remotePath: t.remote_path || "",
-        svnPath: t.svn_path || "",
-        backupEnabled: t.backup_enabled === 1,
-        preCommand: t.pre_command || "",
-        postCommand: t.post_command || "",
-        description: t.description || "",
-        createdAt: t.created_at,
-        updatedAt: t.updated_at
+        id: t2.id,
+        name: t2.name,
+        projectId: t2.project_id,
+        projectName: projectMap.get(t2.project_id) || "",
+        deployType: t2.deploy_type,
+        serverCredentialId: t2.server_credential_id,
+        svnCredentialId: t2.svn_credential_id,
+        remotePath: t2.remote_path || "",
+        svnPath: t2.svn_path || "",
+        backupEnabled: t2.backup_enabled === 1,
+        preCommand: t2.pre_command || "",
+        postCommand: t2.post_command || "",
+        description: t2.description || "",
+        createdAt: t2.created_at,
+        updatedAt: t2.updated_at
       };
       return { success: true, data: mapped };
     } catch (error) {
@@ -11781,8 +12068,8 @@ function registerIpcHandlers(database2) {
           templates: db.all("SELECT * FROM deploy_templates")
         };
         if (!includePasswords) {
-          config.serverCredentials = config.serverCredentials.map((c) => ({ ...c, password: void 0, private_key: void 0, passphrase: void 0 }));
-          config.svnCredentials = config.svnCredentials.map((c) => ({ ...c, password: void 0 }));
+          config.serverCredentials = config.serverCredentials.map((c2) => ({ ...c2, password: void 0, private_key: void 0, passphrase: void 0 }));
+          config.svnCredentials = config.svnCredentials.map((c2) => ({ ...c2, password: void 0 }));
         }
         await lib.writeJson(result.filePath, config, { spaces: 2 });
         return { success: true, path: result.filePath };
@@ -11896,6 +12183,17 @@ function registerIpcHandlers(database2) {
       const { shell: shell2 } = await import("electron");
       await shell2.openPath(require$$0$6.app.getPath("userData"));
       return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+  require$$0$6.ipcMain.handle("config:readDoc", async (_event, fileName) => {
+    try {
+      const fs2 = await import("fs");
+      const path2 = await import("path");
+      const docPath = path2.join(process.cwd(), "doc", fileName);
+      const content = fs2.readFileSync(docPath, "utf-8");
+      return { success: true, data: content };
     } catch (error) {
       return { success: false, error: error.message };
     }

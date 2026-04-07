@@ -70,7 +70,8 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
     selectJsonFile: () => electron.ipcRenderer.invoke("config:selectJsonFile"),
     getDbPath: () => electron.ipcRenderer.invoke("config:getDbPath"),
     clearAll: () => electron.ipcRenderer.invoke("config:clearAll"),
-    openDataDir: () => electron.ipcRenderer.invoke("config:openDataDir")
+    openDataDir: () => electron.ipcRenderer.invoke("config:openDataDir"),
+    readDoc: (fileName) => electron.ipcRenderer.invoke("config:readDoc", fileName)
   },
   node: {
     checkVersion: (expectedVersion) => electron.ipcRenderer.invoke("node:checkVersion", expectedVersion),

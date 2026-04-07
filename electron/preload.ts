@@ -78,7 +78,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     selectJsonFile: () => ipcRenderer.invoke('config:selectJsonFile'),
     getDbPath: () => ipcRenderer.invoke('config:getDbPath'),
     clearAll: () => ipcRenderer.invoke('config:clearAll'),
-    openDataDir: () => ipcRenderer.invoke('config:openDataDir')
+    openDataDir: () => ipcRenderer.invoke('config:openDataDir'),
+    readDoc: (fileName: string) => ipcRenderer.invoke('config:readDoc', fileName)
   },
 
   node: {

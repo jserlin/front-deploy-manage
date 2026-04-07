@@ -53,6 +53,10 @@
               <el-icon><Setting /></el-icon>
               <span>设置</span>
             </el-menu-item>
+            <el-menu-item index="/docs">
+              <el-icon><Notebook /></el-icon>
+              <span>帮助文档</span>
+            </el-menu-item>
           </el-menu>
         </el-aside>
 
@@ -72,6 +76,7 @@
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
+import { Notebook } from '@element-plus/icons-vue'
 
 const route = useRoute()
 
