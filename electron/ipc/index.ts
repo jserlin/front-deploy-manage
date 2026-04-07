@@ -526,9 +526,9 @@ export function registerIpcHandlers(database: DatabaseManager) {
         const backupTs = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
         await sshService.execCommand(serverCredential, `mv ${remotePath} ${remotePath}_backup_${backupTs}`)
       }
-      event.sender.send('deploy:progress', { stage: 'uploading', message: '上传到服务器...' })
+      event.sender.send('deploy:progress', { stage: 'uploading', message: '压缩并上传到服务器...' })
       const outputPath = path.join(project.localPath, project.outputDir)
-      await sshService.uploadDirectory(serverCredential, outputPath, remotePath, (progress: any) => {
+      await sshService.uploadDirectoryCompressed(serverCredential, outputPath, remotePath, (progress: any) => {
         event.sender.send('deploy:progress', { stage: 'uploading', progress })
       })
       const commit = await gitService.getCurrentCommit(project.localPath)
@@ -594,8 +594,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
           event.sender.send('deploy:progress', { stage: 'uploading', message: `上传到 SVN: ${target.svnPath}` })
           await svnService.uploadDirectory(target.credential, outputPath, target.svnPath, target.commitMessage)
         } else if (target.type === 'server') {
-          event.sender.send('deploy:progress', { stage: 'uploading', message: `上传到服务器: ${target.credential.host}` })
-          await sshService.uploadDirectory(target.credential, outputPath, target.remotePath, (progress: any) => {
+          event.sender.send('deploy:progress', { stage: 'uploading', message: `压缩并上传到服务器: ${target.credential.host}` })
+          await sshService.uploadDirectoryCompressed(target.credential, outputPath, target.remotePath, (progress: any) => {
             event.sender.send('deploy:progress', { stage: 'uploading', progress })
           })
         }

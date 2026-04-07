@@ -24,21 +24,21 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 const require$$0$6 = require("electron");
-const require$$1 = require("path");
+const path$c = require("path");
 const require$$0$2 = require("fs");
 const require$$0 = require("constants");
 const require$$0$1 = require("stream");
 const require$$4 = require("util");
 const require$$5 = require("assert");
 const node_buffer = require("node:buffer");
-const require$$1$1 = require("tty");
-const require$$1$2 = require("os");
+const require$$1 = require("tty");
+const require$$1$1 = require("os");
 const require$$0$3 = require("child_process");
 const node_path = require("node:path");
 const node_events = require("node:events");
 const require$$0$4 = require("events");
 const require$$0$5 = require("http");
-const require$$1$3 = require("https");
+const require$$1$2 = require("https");
 const ssh2 = require("ssh2");
 const crypto = require("crypto");
 function _interopNamespaceDefault(e) {
@@ -57,7 +57,7 @@ function _interopNamespaceDefault(e) {
   n.default = e;
   return Object.freeze(n);
 }
-const require$$1__namespace = /* @__PURE__ */ _interopNamespaceDefault(require$$1);
+const path__namespace = /* @__PURE__ */ _interopNamespaceDefault(path$c);
 var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
 function getDefaultExportFromCjs(x) {
   return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
@@ -948,7 +948,7 @@ function retry() {
 })(fs$i);
 var makeDir$1 = {};
 var utils$1 = {};
-const path$b = require$$1;
+const path$b = path$c;
 utils$1.checkPath = function checkPath(pth) {
   if (process.platform === "win32") {
     const pathHasInvalidWinCharacters = /[<>:"|?*]/.test(pth.replace(path$b.parse(pth).root, ""));
@@ -1029,7 +1029,7 @@ var utimes = {
   utimesMillisSync: utimesMillisSync$1
 };
 const fs$d = fs$i;
-const path$a = require$$1;
+const path$a = path$c;
 const u$b = universalify$1.fromPromise;
 function getStats$1(src2, dest, opts) {
   const statFunc = opts.dereference ? (file2) => fs$d.stat(file2, { bigint: true }) : (file2) => fs$d.lstat(file2, { bigint: true });
@@ -1175,7 +1175,7 @@ var async = {
   asyncIteratorConcurrentProcess: asyncIteratorConcurrentProcess$1
 };
 const fs$c = fs$i;
-const path$9 = require$$1;
+const path$9 = path$c;
 const { mkdirs: mkdirs$1 } = mkdirs$2;
 const { pathExists: pathExists$5 } = pathExists_1;
 const { utimesMillis } = utimes;
@@ -1294,7 +1294,7 @@ async function onLink$1(destStat, src2, dest, opts) {
 }
 var copy_1 = copy$2;
 const fs$b = gracefulFs;
-const path$8 = require$$1;
+const path$8 = path$c;
 const mkdirsSync$1 = mkdirs$2.mkdirsSync;
 const utimesMillisSync = utimes.utimesMillisSync;
 const stat$2 = stat$4;
@@ -1443,7 +1443,7 @@ var remove_1 = {
 };
 const u$8 = universalify$1.fromPromise;
 const fs$9 = fs$i;
-const path$7 = require$$1;
+const path$7 = path$c;
 const mkdir$3 = mkdirs$2;
 const remove$2 = remove_1;
 const emptyDir = u$8(async function emptyDir2(dir) {
@@ -1474,7 +1474,7 @@ var empty = {
   emptydir: emptyDir
 };
 const u$7 = universalify$1.fromPromise;
-const path$6 = require$$1;
+const path$6 = path$c;
 const fs$8 = fs$i;
 const mkdir$2 = mkdirs$2;
 async function createFile$1(file2) {
@@ -1526,7 +1526,7 @@ var file$1 = {
   createFileSync: createFileSync$1
 };
 const u$6 = universalify$1.fromPromise;
-const path$5 = require$$1;
+const path$5 = path$c;
 const fs$7 = fs$i;
 const mkdir$1 = mkdirs$2;
 const { pathExists: pathExists$4 } = pathExists_1;
@@ -1575,7 +1575,7 @@ var link = {
   createLink: u$6(createLink$1),
   createLinkSync: createLinkSync$1
 };
-const path$4 = require$$1;
+const path$4 = path$c;
 const fs$6 = fs$i;
 const { pathExists: pathExists$3 } = pathExists_1;
 const u$5 = universalify$1.fromPromise;
@@ -1668,7 +1668,7 @@ var symlinkType_1 = {
   symlinkTypeSync: symlinkTypeSync$1
 };
 const u$3 = universalify$1.fromPromise;
-const path$3 = require$$1;
+const path$3 = path$c;
 const fs$4 = fs$i;
 const { mkdirs, mkdirsSync } = mkdirs$2;
 const { symlinkPaths, symlinkPathsSync } = symlinkPaths_1;
@@ -1847,7 +1847,7 @@ var jsonfile = {
 };
 const u$2 = universalify$1.fromPromise;
 const fs$3 = fs$i;
-const path$2 = require$$1;
+const path$2 = path$c;
 const mkdir = mkdirs$2;
 const pathExists$1 = pathExists_1.pathExists;
 async function outputFile$1(file2, data, encoding = "utf-8") {
@@ -1894,7 +1894,7 @@ jsonFile.readJSON = jsonFile.readJson;
 jsonFile.readJSONSync = jsonFile.readJsonSync;
 var json = jsonFile;
 const fs$2 = fs$i;
-const path$1 = require$$1;
+const path$1 = path$c;
 const { copy } = copy$1;
 const { remove: remove$1 } = remove_1;
 const { mkdirp } = mkdirs$2;
@@ -1939,7 +1939,7 @@ async function moveAcrossDevice$1(src2, dest, overwrite) {
 }
 var move_1 = move$1;
 const fs$1 = gracefulFs;
-const path = require$$1;
+const path = path$c;
 const copySync = copy$1.copySync;
 const removeSync = remove_1.removeSync;
 const mkdirpSync = mkdirs$2.mkdirpSync;
@@ -2024,7 +2024,7 @@ class DatabaseManager {
     }
   }
   initialize() {
-    fs.ensureDirSync(require$$1.join(this.dbPath, ".."));
+    fs.ensureDirSync(path$c.join(this.dbPath, ".."));
     this.save();
     console.log("Database initialized at:", this.dbPath);
   }
@@ -2681,8 +2681,8 @@ var hasRequiredSupportsColor;
 function requireSupportsColor() {
   if (hasRequiredSupportsColor) return supportsColor_1;
   hasRequiredSupportsColor = 1;
-  const os = require$$1$2;
-  const tty = require$$1$1;
+  const os = require$$1$1;
+  const tty = require$$1;
   const hasFlag2 = requireHasFlag();
   const { env } = process;
   let forceColor;
@@ -2783,7 +2783,7 @@ function requireNode$1() {
   if (hasRequiredNode$1) return node$1.exports;
   hasRequiredNode$1 = 1;
   (function(module2, exports$1) {
-    const tty = require$$1$1;
+    const tty = require$$1;
     const util2 = require$$4;
     exports$1.init = init;
     exports$1.log = log2;
@@ -8156,7 +8156,7 @@ function requirePackageJson() {
   if (hasRequiredPackageJson) return packageJson;
   hasRequiredPackageJson = 1;
   const fs2 = require$$0$2;
-  const path2 = require$$1;
+  const path2 = path$c;
   packageJson = {
     findAndReadPackageJson,
     tryReadJsonAt
@@ -8228,8 +8228,8 @@ function requireNodeExternalApi() {
   if (hasRequiredNodeExternalApi) return NodeExternalApi_1;
   hasRequiredNodeExternalApi = 1;
   const childProcess = require$$0$3;
-  const os = require$$1$2;
-  const path2 = require$$1;
+  const os = require$$1$1;
+  const path2 = path$c;
   const packageJson2 = requirePackageJson();
   class NodeExternalApi {
     constructor() {
@@ -8410,7 +8410,7 @@ var hasRequiredElectronExternalApi;
 function requireElectronExternalApi() {
   if (hasRequiredElectronExternalApi) return ElectronExternalApi_1;
   hasRequiredElectronExternalApi = 1;
-  const path2 = require$$1;
+  const path2 = path$c;
   const NodeExternalApi = requireNodeExternalApi();
   class ElectronExternalApi extends NodeExternalApi {
     /**
@@ -8595,8 +8595,8 @@ function requireInitialize() {
   if (hasRequiredInitialize) return initialize;
   hasRequiredInitialize = 1;
   const fs2 = require$$0$2;
-  const os = require$$1$2;
-  const path2 = require$$1;
+  const os = require$$1$1;
+  const path2 = path$c;
   const preloadInitializeFn = requireElectronLogPreload();
   let preloadInitialized = false;
   let spyConsoleInitialized = false;
@@ -9425,7 +9425,7 @@ function requireFile$1() {
   hasRequiredFile$1 = 1;
   const EventEmitter = require$$0$4;
   const fs2 = require$$0$2;
-  const os = require$$1$2;
+  const os = require$$1$1;
   class File extends EventEmitter {
     constructor({
       path: path2,
@@ -9584,7 +9584,7 @@ function requireFileRegistry() {
   hasRequiredFileRegistry = 1;
   const EventEmitter = require$$0$4;
   const fs2 = require$$0$2;
-  const path2 = require$$1;
+  const path2 = path$c;
   const File = requireFile$1();
   const NullFile = requireNullFile();
   class FileRegistry extends EventEmitter {
@@ -9654,8 +9654,8 @@ function requireFile() {
   if (hasRequiredFile) return file;
   hasRequiredFile = 1;
   const fs2 = require$$0$2;
-  const os = require$$1$2;
-  const path2 = require$$1;
+  const os = require$$1$1;
+  const path2 = path$c;
   const FileRegistry = requireFileRegistry();
   const { transform } = requireTransform();
   const { removeStyles } = requireStyle();
@@ -9820,7 +9820,7 @@ function requireRemote() {
   if (hasRequiredRemote) return remote;
   hasRequiredRemote = 1;
   const http = require$$0$5;
-  const https = require$$1$3;
+  const https = require$$1$2;
   const { transform } = requireTransform();
   const { removeStyles } = requireStyle();
   const { toJSON, maxDepth } = requireObject();
@@ -10011,7 +10011,7 @@ if (isRenderer) {
 var srcExports = src.exports;
 const log = /* @__PURE__ */ getDefaultExportFromCjs(srcExports);
 log.transports.file.resolvePathFn = () => {
-  return require$$1.join(require$$0$6.app.getPath("userData"), "logs", "main.log");
+  return path$c.join(require$$0$6.app.getPath("userData"), "logs", "main.log");
 };
 log.transports.file.format = "[{y}-{m}-{d} {h}:{i}:{s}] [{level}] {text}";
 log.transports.file.level = "info";
@@ -10286,7 +10286,7 @@ class SSHService {
     let count = 0;
     const items = await lib.readdir(dirPath);
     for (const item of items) {
-      const itemPath = require$$1__namespace.join(dirPath, item);
+      const itemPath = path__namespace.join(dirPath, item);
       const stats = await lib.stat(itemPath);
       if (stats.isDirectory()) {
         count += await this.countFiles(itemPath);
@@ -10296,13 +10296,124 @@ class SSHService {
     }
     return count;
   }
+  async uploadDirectoryCompressed(credential, localPath, remotePath, onProgress) {
+    this.checkAborted();
+    const tmpDir = path__namespace.join(require("os").tmpdir(), "deploy-upload");
+    await lib.ensureDir(tmpDir);
+    const timestamp = Date.now();
+    const archiveName = `deploy-${timestamp}.tar.gz`;
+    const localArchivePath = path__namespace.join(tmpDir, archiveName);
+    const remoteArchivePath = `/tmp/${archiveName}`;
+    try {
+      this.checkAborted();
+      logger.info(`Compressing ${localPath} to ${localArchivePath}`);
+      onProgress == null ? void 0 : onProgress({
+        filename: archiveName,
+        transferred: 0,
+        total: 0,
+        percent: 0,
+        fileCount: 0,
+        totalFiles: 1
+      });
+      const localDir = localPath;
+      const localBase = ".";
+      require$$0$3.execFileSync("tar", ["-czf", localArchivePath, "-C", localDir, localBase], { timeout: 12e4 });
+      const archiveStats = await lib.stat(localArchivePath);
+      const archiveSize = archiveStats.size;
+      logger.info(`Archive created: ${archiveName} (${(archiveSize / 1024 / 1024).toFixed(2)} MB)`);
+      this.checkAborted();
+      await this.uploadSingleFile(credential, localArchivePath, remoteArchivePath, (transferred, total) => {
+        onProgress == null ? void 0 : onProgress({
+          filename: archiveName,
+          transferred,
+          total,
+          percent: total > 0 ? Math.round(transferred / total * 100) : 0,
+          fileCount: transferred === total ? 1 : 0,
+          totalFiles: 1
+        });
+      });
+      this.checkAborted();
+      logger.info(`Extracting archive on remote server to ${remotePath}`);
+      const extractCmd = `mkdir -p "${remotePath}" && tar -xzf "${remoteArchivePath}" -C "${remotePath}" && rm -f "${remoteArchivePath}"`;
+      const extractResult = await this.execCommand(credential, extractCmd);
+      if (extractResult.code !== 0) {
+        throw new Error(`远程解压失败: ${extractResult.stderr}`);
+      }
+      logger.info(`Deploy completed successfully via compressed upload`);
+    } finally {
+      try {
+        await lib.remove(localArchivePath);
+      } catch {
+      }
+    }
+  }
+  async uploadSingleFile(credential, localFilePath, remoteFilePath, onProgress) {
+    return new Promise((resolve, reject) => {
+      const conn = new ssh2.Client();
+      this.currentConn = conn;
+      const config = {
+        host: credential.host,
+        port: credential.port,
+        username: credential.username
+      };
+      if (credential.authType === "password") {
+        config.password = credential.password ? CryptoUtil.decrypt(credential.password) : "";
+      } else {
+        config.privateKey = credential.privateKey ? CryptoUtil.decrypt(credential.privateKey) : "";
+        if (credential.passphrase) {
+          config.passphrase = CryptoUtil.decrypt(credential.passphrase);
+        }
+      }
+      conn.on("ready", () => {
+        conn.sftp((err, sftp) => {
+          if (err) {
+            conn.end();
+            this.currentConn = null;
+            reject(err);
+            return;
+          }
+          const stats = lib.statSync(localFilePath);
+          const total = stats.size;
+          let transferred = 0;
+          let lastReported = 0;
+          sftp.fastPut(localFilePath, remoteFilePath, {
+            step: (transferredBytes) => {
+              transferred = transferredBytes;
+              if (transferred - lastReported > 1024 * 64 || transferred === total) {
+                lastReported = transferred;
+                onProgress == null ? void 0 : onProgress(transferred, total);
+              }
+            }
+          }, (err2) => {
+            conn.end();
+            this.currentConn = null;
+            if (err2) {
+              reject(err2);
+            } else {
+              onProgress == null ? void 0 : onProgress(total, total);
+              resolve();
+            }
+          });
+        });
+      });
+      conn.on("error", (err) => {
+        this.currentConn = null;
+        if (this.aborted) {
+          reject(new Error("发布已取消"));
+        } else {
+          reject(err);
+        }
+      });
+      conn.connect(config);
+    });
+  }
   async uploadDirectoryRecursive(sftp, localPath, remotePath, onProgress, counters) {
     this.checkAborted();
     await this.mkdirRemote(sftp, remotePath);
     const items = await lib.readdir(localPath);
     for (const item of items) {
       this.checkAborted();
-      const localItemPath = require$$1__namespace.join(localPath, item);
+      const localItemPath = path__namespace.join(localPath, item);
       const remoteItemPath = `${remotePath}/${item}`;
       const stats = await lib.stat(localItemPath);
       if (stats.isDirectory()) {
@@ -10322,7 +10433,7 @@ class SSHService {
           transferred = transferredBytes;
           if (onProgress) {
             onProgress({
-              filename: require$$1__namespace.basename(localPath),
+              filename: path__namespace.basename(localPath),
               transferred,
               total,
               percent: Math.round(transferred / total * 100),
@@ -10523,7 +10634,7 @@ class BuildService {
       return { ...process.env, NODE_ENV: "production" };
     }
     const normalized = nodeVersion.startsWith("v") ? nodeVersion : `v${nodeVersion}`;
-    const nodeDir = require$$1__namespace.join(nvmHome, normalized);
+    const nodeDir = path__namespace.join(nvmHome, normalized);
     if (!lib.existsSync(nodeDir)) {
       logger.warn(`Node ${normalized} directory not found: ${nodeDir}, using default Node`);
       return { ...process.env, NODE_ENV: "production" };
@@ -10621,7 +10732,7 @@ class BuildService {
   }
   async validateOutput(project) {
     try {
-      const outputPath = require$$1__namespace.join(project.localPath, project.outputDir);
+      const outputPath = path__namespace.join(project.localPath, project.outputDir);
       const exists = await lib.pathExists(outputPath);
       if (!exists) {
         logger.error(`Output directory does not exist: ${outputPath}`);
@@ -10651,12 +10762,12 @@ class NodeVersionService {
   }
   async checkNvmAvailable() {
     const nvmHome = getNvmHome();
-    return !!(nvmHome && require$$0$2.existsSync(require$$1.join(nvmHome, "nvm.exe")));
+    return !!(nvmHome && require$$0$2.existsSync(path$c.join(nvmHome, "nvm.exe")));
   }
   async isVersionInstalled(version) {
     const normalized = version.startsWith("v") ? version : `v${version}`;
     const nvmHome = getNvmHome();
-    if (nvmHome && require$$0$2.existsSync(require$$1.join(nvmHome, normalized))) {
+    if (nvmHome && require$$0$2.existsSync(path$c.join(nvmHome, normalized))) {
       return true;
     }
     return false;
@@ -10665,7 +10776,7 @@ class NodeVersionService {
     const normalized = version.startsWith("v") ? version : `v${version}`;
     const nvmHome = getNvmHome();
     if (!nvmHome) return null;
-    const versionDir = require$$1.join(nvmHome, normalized);
+    const versionDir = path$c.join(nvmHome, normalized);
     return require$$0$2.existsSync(versionDir) ? versionDir : null;
   }
   async getInstalledVersions() {
@@ -11193,7 +11304,7 @@ function registerIpcHandlers(database2) {
         await svnService.backup(svnPath, svnCredential);
       }
       event.sender.send("deploy:progress", { stage: "uploading", message: "上传到 SVN..." });
-      const outputPath = require$$1__namespace.join(project.localPath, project.outputDir);
+      const outputPath = path__namespace.join(project.localPath, project.outputDir);
       await svnService.uploadDirectory(svnCredential, outputPath, svnPath, commitMessage);
       const commit = await gitService.getCurrentCommit(project.localPath);
       const now = (/* @__PURE__ */ new Date()).toLocaleString("sv-SE");
@@ -11252,9 +11363,9 @@ function registerIpcHandlers(database2) {
         const backupTs = `${now2.getFullYear()}${pad(now2.getMonth() + 1)}${pad(now2.getDate())}${pad(now2.getHours())}${pad(now2.getMinutes())}${pad(now2.getSeconds())}`;
         await sshService.execCommand(serverCredential, `mv ${remotePath} ${remotePath}_backup_${backupTs}`);
       }
-      event.sender.send("deploy:progress", { stage: "uploading", message: "上传到服务器..." });
-      const outputPath = require$$1__namespace.join(project.localPath, project.outputDir);
-      await sshService.uploadDirectory(serverCredential, outputPath, remotePath, (progress) => {
+      event.sender.send("deploy:progress", { stage: "uploading", message: "压缩并上传到服务器..." });
+      const outputPath = path__namespace.join(project.localPath, project.outputDir);
+      await sshService.uploadDirectoryCompressed(serverCredential, outputPath, remotePath, (progress) => {
         event.sender.send("deploy:progress", { stage: "uploading", progress });
       });
       const commit = await gitService.getCurrentCommit(project.localPath);
@@ -11316,13 +11427,13 @@ function registerIpcHandlers(database2) {
         event.sender.send("deploy:progress", { stage: "building", message: "跳过构建，使用已有产物..." });
       }
       for (const target of targets) {
-        const outputPath = require$$1__namespace.join(project.localPath, project.outputDir);
+        const outputPath = path__namespace.join(project.localPath, project.outputDir);
         if (target.type === "svn") {
           event.sender.send("deploy:progress", { stage: "uploading", message: `上传到 SVN: ${target.svnPath}` });
           await svnService.uploadDirectory(target.credential, outputPath, target.svnPath, target.commitMessage);
         } else if (target.type === "server") {
-          event.sender.send("deploy:progress", { stage: "uploading", message: `上传到服务器: ${target.credential.host}` });
-          await sshService.uploadDirectory(target.credential, outputPath, target.remotePath, (progress) => {
+          event.sender.send("deploy:progress", { stage: "uploading", message: `压缩并上传到服务器: ${target.credential.host}` });
+          await sshService.uploadDirectoryCompressed(target.credential, outputPath, target.remotePath, (progress) => {
             event.sender.send("deploy:progress", { stage: "uploading", progress });
           });
         }
@@ -11619,7 +11730,7 @@ function registerIpcHandlers(database2) {
     }
   });
   require$$0$6.ipcMain.handle("config:getDbPath", async () => {
-    return { success: true, path: require$$1.join(require$$0$6.app.getPath("userData"), "deploy-manager.json") };
+    return { success: true, path: path$c.join(require$$0$6.app.getPath("userData"), "deploy-manager.json") };
   });
   require$$0$6.ipcMain.handle("config:clearAll", async () => {
     try {
@@ -11660,7 +11771,7 @@ async function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: require$$1.join(__dirname, "preload.js")
+      preload: path$c.join(__dirname, "preload.js")
     },
     title: "Frontend Deploy Manager",
     show: false
@@ -11672,11 +11783,11 @@ async function createWindow() {
     await mainWindow.loadURL("http://localhost:5173");
     mainWindow.webContents.openDevTools();
   } else {
-    await mainWindow.loadFile(require$$1.join(__dirname, "../dist/index.html"));
+    await mainWindow.loadFile(path$c.join(__dirname, "../dist/index.html"));
   }
 }
 function initializeDatabase() {
-  const dbPath = require$$1.join(require$$0$6.app.getPath("userData"), "deploy-manager.json");
+  const dbPath = path$c.join(require$$0$6.app.getPath("userData"), "deploy-manager.json");
   console.log("Database path:", dbPath);
   database = new DatabaseManager(dbPath);
   database.initialize();
