@@ -10,6 +10,7 @@ export interface Project {
   groupName?: string
   groupColor?: string
   description?: string
+  nodeVersion?: string
   createdAt: string
   updatedAt: string
 }

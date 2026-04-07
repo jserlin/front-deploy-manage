@@ -5,6 +5,7 @@ import { GitService } from '../services/git.service'
 import { SSHService } from '../services/ssh.service'
 import { SVNService } from '../services/svn.service'
 import { BuildService } from '../services/build.service'
+import { NodeVersionService } from '../services/node-version.service'
 import { CryptoUtil } from '../utils/crypto'
 import * as fs from 'fs-extra'
 import * as path from 'path'
@@ -15,6 +16,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
   const sshService = new SSHService()
   const svnService = new SVNService()
   const buildService = new BuildService()
+  const nodeVersionService = new NodeVersionService()
 
   // ==================== 项目管理 ====================
 
@@ -37,6 +39,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
           groupName: group ? group.name : '',
           groupColor: group ? group.color : '',
           description: p.description || '',
+          nodeVersion: p.node_version || '',
           createdAt: p.created_at,
           updatedAt: p.updated_at
         }
@@ -66,6 +69,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
         groupName: group ? group.name : '',
         groupColor: group ? group.color : '',
         description: p.description || '',
+        nodeVersion: p.node_version || '',
         createdAt: p.created_at,
         updatedAt: p.updated_at
       }
@@ -79,12 +83,12 @@ export function registerIpcHandlers(database: DatabaseManager) {
     try {
       console.log('[IPC] project:create - data:', JSON.stringify(data))
       const result = db.run(`
-        INSERT INTO projects (name, local_path, git_repo, git_branch, build_command, output_dir, group_id, description)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO projects (name, local_path, git_repo, git_branch, build_command, output_dir, group_id, description, node_version)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         data.name, data.localPath, data.gitRepo || null, data.gitBranch || 'main',
         data.buildCommand || 'npm run build', data.outputDir || 'dist',
-        data.groupId || null, data.description || null
+        data.groupId || null, data.description || null, data.nodeVersion || null
       ])
       return { success: true, data: { id: result.lastInsertRowid } }
     } catch (error: any) {
@@ -97,12 +101,12 @@ export function registerIpcHandlers(database: DatabaseManager) {
     try {
       db.run(`
         UPDATE projects
-        SET name=?, local_path=?, git_repo=?, git_branch=?, build_command=?, output_dir=?, group_id=?, description=?, updated_at=CURRENT_TIMESTAMP
+        SET name=?, local_path=?, git_repo=?, git_branch=?, build_command=?, output_dir=?, group_id=?, description=?, node_version=?, updated_at=CURRENT_TIMESTAMP
         WHERE id=?
       `, [
         data.name, data.localPath, data.gitRepo || null, data.gitBranch || 'main',
         data.buildCommand || 'npm run build', data.outputDir || 'dist',
-        data.groupId || null, data.description || null, id
+        data.groupId || null, data.description || null, data.nodeVersion || null, id
       ])
       return { success: true }
     } catch (error: any) {
@@ -618,6 +622,33 @@ export function registerIpcHandlers(database: DatabaseManager) {
     sshService.abort()
     svnService.abort()
     return { success: true }
+  })
+
+  ipcMain.handle('node:checkVersion', async (event, expectedVersion: string) => {
+    try {
+      const result = await nodeVersionService.checkVersion(expectedVersion)
+      return { success: true, data: result }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('node:switchVersion', async (event, version: string) => {
+    try {
+      await nodeVersionService.switchVersion(version)
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('node:installVersion', async (event, version: string) => {
+    try {
+      await nodeVersionService.installVersion(version)
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
   })
 
   ipcMain.handle('deploy:getHistory', async (event, projectId?: number) => {

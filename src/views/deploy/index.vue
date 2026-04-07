@@ -192,7 +192,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useProjectStore } from '@/stores/project'
 
 import type { Project } from '@/types/project'
@@ -263,6 +263,46 @@ const handleProjectChange = async () => {
   }
 }
 
+const checkNodeVersion = async (project: any): Promise<boolean> => {
+  if (!deployConfig.value.needBuild || !project.nodeVersion) {
+    return true
+  }
+
+  try {
+    deployProgress.value = { stage: 'preparing', message: '检查 Node 版本...' }
+    const checkResult = await window.electronAPI.node.checkVersion(project.nodeVersion)
+
+    if (!checkResult.success) {
+      ElMessage.error(checkResult.error || 'Node 版本检查失败')
+      return false
+    }
+
+    const check = checkResult.data
+
+    if (!check.needSwitch) {
+      return true
+    }
+
+    if (check.error) {
+      ElMessage.error(check.error)
+      return false
+    }
+
+    if (!check.versionInstalled) {
+      ElMessage.error(
+        `项目需要 Node ${check.expectedVersion}，但本地未安装该版本。请先通过终端执行 nvm install ${check.expectedVersion} 安装后再试。`
+      )
+      return false
+    }
+
+    ElMessage.info(`将使用 Node ${check.expectedVersion} 进行构建（PATH 注入方式，不影响全局版本）`)
+    return true
+  } catch (error: any) {
+    ElMessage.error(error.message || 'Node 版本检查异常')
+    return false
+  }
+}
+
 const startDeploy = async () => {
   deploying.value = true
   deployLogs.value = []
@@ -275,6 +315,14 @@ const startDeploy = async () => {
     }
 
     const plainProject = JSON.parse(JSON.stringify(project))
+
+    const nodeOk = await checkNodeVersion(project)
+    if (!nodeOk) {
+      deploying.value = false
+      deployProgress.value = { stage: '', message: '' }
+      return
+    }
+
     let result
     
     if (deployConfig.value.deployType === 'svn') {

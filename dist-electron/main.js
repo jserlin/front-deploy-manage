@@ -10514,6 +10514,29 @@ class BuildService {
   constructor() {
     __publicField(this, "currentProcess", null);
   }
+  getNodeEnvPath(nodeVersion) {
+    if (!nodeVersion) {
+      return { ...process.env, NODE_ENV: "production" };
+    }
+    const nvmHome = process.env.NVM_HOME;
+    if (!nvmHome) {
+      return { ...process.env, NODE_ENV: "production" };
+    }
+    const normalized = nodeVersion.startsWith("v") ? nodeVersion : `v${nodeVersion}`;
+    const nodeDir = require$$1__namespace.join(nvmHome, normalized);
+    if (!lib.existsSync(nodeDir)) {
+      logger.warn(`Node ${normalized} directory not found: ${nodeDir}, using default Node`);
+      return { ...process.env, NODE_ENV: "production" };
+    }
+    const currentPath = process.env.PATH || "";
+    const newPath = `${nodeDir};${currentPath}`;
+    logger.info(`Injecting Node ${normalized} into PATH: ${nodeDir}`);
+    return {
+      ...process.env,
+      PATH: newPath,
+      NODE_ENV: "production"
+    };
+  }
   async build(project, onLog) {
     return new Promise((resolve) => {
       var _a2, _b;
@@ -10528,10 +10551,11 @@ class BuildService {
           return;
         }
         const [command, ...args] = project.buildCommand.split(" ");
+        const env = this.getNodeEnvPath(project.nodeVersion);
         this.currentProcess = require$$0$3.spawn(command, args, {
           cwd: project.localPath,
           shell: true,
-          env: { ...process.env, NODE_ENV: "production" }
+          env
         });
         let output = "";
         let error = "";
@@ -10616,12 +10640,118 @@ class BuildService {
     }
   }
 }
+const execAsync = require$$4.promisify(require$$0$3.exec);
+function getNvmHome() {
+  return process.env.NVM_HOME || null;
+}
+class NodeVersionService {
+  async getCurrentVersion() {
+    const { stdout } = await execAsync("node -v", { timeout: 5e3 });
+    return stdout.trim();
+  }
+  async checkNvmAvailable() {
+    const nvmHome = getNvmHome();
+    return !!(nvmHome && require$$0$2.existsSync(require$$1.join(nvmHome, "nvm.exe")));
+  }
+  async isVersionInstalled(version) {
+    const normalized = version.startsWith("v") ? version : `v${version}`;
+    const nvmHome = getNvmHome();
+    if (nvmHome && require$$0$2.existsSync(require$$1.join(nvmHome, normalized))) {
+      return true;
+    }
+    return false;
+  }
+  getNodeVersionPath(version) {
+    const normalized = version.startsWith("v") ? version : `v${version}`;
+    const nvmHome = getNvmHome();
+    if (!nvmHome) return null;
+    const versionDir = require$$1.join(nvmHome, normalized);
+    return require$$0$2.existsSync(versionDir) ? versionDir : null;
+  }
+  async getInstalledVersions() {
+    const nvmHome = getNvmHome();
+    if (!nvmHome || !require$$0$2.existsSync(nvmHome)) return [];
+    try {
+      const entries = require$$0$2.readdirSync(nvmHome, { withFileTypes: true });
+      return entries.filter((e) => e.isDirectory() && e.name.startsWith("v")).map((e) => e.name).sort();
+    } catch {
+      return [];
+    }
+  }
+  async checkVersion(expectedVersion) {
+    if (!expectedVersion) {
+      return {
+        needSwitch: false,
+        currentVersion: "",
+        expectedVersion: "",
+        nvmAvailable: false,
+        versionInstalled: false,
+        nodePath: ""
+      };
+    }
+    const normalized = expectedVersion.startsWith("v") ? expectedVersion : `v${expectedVersion}`;
+    try {
+      const currentVersion = await this.getCurrentVersion();
+      if (currentVersion === normalized) {
+        return {
+          needSwitch: false,
+          currentVersion,
+          expectedVersion: normalized,
+          nvmAvailable: true,
+          versionInstalled: true,
+          nodePath: ""
+        };
+      }
+      const nvmAvailable = await this.checkNvmAvailable();
+      if (!nvmAvailable) {
+        return {
+          needSwitch: true,
+          currentVersion,
+          expectedVersion: normalized,
+          nvmAvailable: false,
+          versionInstalled: false,
+          nodePath: "",
+          error: `本项目依赖 Node ${normalized}，请先安装 nvm-windows 后再试`
+        };
+      }
+      const versionInstalled = await this.isVersionInstalled(normalized);
+      const nodePath = this.getNodeVersionPath(normalized) || "";
+      return {
+        needSwitch: true,
+        currentVersion,
+        expectedVersion: normalized,
+        nvmAvailable: true,
+        versionInstalled,
+        nodePath
+      };
+    } catch (error) {
+      return {
+        needSwitch: true,
+        currentVersion: "unknown",
+        expectedVersion: normalized,
+        nvmAvailable: false,
+        versionInstalled: false,
+        nodePath: "",
+        error: error.message
+      };
+    }
+  }
+  async switchVersion(version) {
+    const normalized = version.startsWith("v") ? version : `v${version}`;
+    const nodePath = this.getNodeVersionPath(normalized);
+    if (!nodePath) {
+      throw new Error(`Node ${normalized} 未安装，无法切换`);
+    }
+    logger.info(`Node ${normalized} ready, path: ${nodePath}`);
+  }
+}
 function registerIpcHandlers(database2) {
   const db = database2;
   const gitService = new GitService();
   const sshService = new SSHService();
   const svnService = new SVNService();
   const buildService = new BuildService();
+  const nodeVersionService = new NodeVersionService();
   require$$0$6.ipcMain.handle("project:getAll", async () => {
     try {
       const projects = db.all("projects");
@@ -10641,6 +10771,7 @@ function registerIpcHandlers(database2) {
           groupName: group ? group.name : "",
           groupColor: group ? group.color : "",
           description: p.description || "",
+          nodeVersion: p.node_version || "",
           createdAt: p.created_at,
           updatedAt: p.updated_at
         };
@@ -10669,6 +10800,7 @@ function registerIpcHandlers(database2) {
         groupName: group ? group.name : "",
         groupColor: group ? group.color : "",
         description: p.description || "",
+        nodeVersion: p.node_version || "",
         createdAt: p.created_at,
         updatedAt: p.updated_at
       };
@@ -10681,8 +10813,8 @@ function registerIpcHandlers(database2) {
     try {
       console.log("[IPC] project:create - data:", JSON.stringify(data));
       const result = db.run(`
-        INSERT INTO projects (name, local_path, git_repo, git_branch, build_command, output_dir, group_id, description)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO projects (name, local_path, git_repo, git_branch, build_command, output_dir, group_id, description, node_version)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         data.name,
         data.localPath,
@@ -10691,7 +10823,8 @@ function registerIpcHandlers(database2) {
         data.buildCommand || "npm run build",
         data.outputDir || "dist",
         data.groupId || null,
-        data.description || null
+        data.description || null,
+        data.nodeVersion || null
       ]);
       return { success: true, data: { id: result.lastInsertRowid } };
     } catch (error) {
@@ -10703,7 +10836,7 @@ function registerIpcHandlers(database2) {
     try {
       db.run(`
         UPDATE projects
-        SET name=?, local_path=?, git_repo=?, git_branch=?, build_command=?, output_dir=?, group_id=?, description=?, updated_at=CURRENT_TIMESTAMP
+        SET name=?, local_path=?, git_repo=?, git_branch=?, build_command=?, output_dir=?, group_id=?, description=?, node_version=?, updated_at=CURRENT_TIMESTAMP
         WHERE id=?
       `, [
         data.name,
@@ -10714,6 +10847,7 @@ function registerIpcHandlers(database2) {
         data.outputDir || "dist",
         data.groupId || null,
         data.description || null,
+        data.nodeVersion || null,
         id
       ]);
       return { success: true };
@@ -11216,6 +11350,30 @@ function registerIpcHandlers(database2) {
     sshService.abort();
     svnService.abort();
     return { success: true };
+  });
+  require$$0$6.ipcMain.handle("node:checkVersion", async (event, expectedVersion) => {
+    try {
+      const result = await nodeVersionService.checkVersion(expectedVersion);
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+  require$$0$6.ipcMain.handle("node:switchVersion", async (event, version) => {
+    try {
+      await nodeVersionService.switchVersion(version);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+  require$$0$6.ipcMain.handle("node:installVersion", async (event, version) => {
+    try {
+      await nodeVersionService.installVersion(version);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   });
   require$$0$6.ipcMain.handle("deploy:getHistory", async (event, projectId) => {
     try {

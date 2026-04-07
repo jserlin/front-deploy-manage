@@ -79,5 +79,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getDbPath: () => ipcRenderer.invoke('config:getDbPath'),
     clearAll: () => ipcRenderer.invoke('config:clearAll'),
     openDataDir: () => ipcRenderer.invoke('config:openDataDir')
+  },
+
+  node: {
+    checkVersion: (expectedVersion: string) => ipcRenderer.invoke('node:checkVersion', expectedVersion),
+    switchVersion: (version: string) => ipcRenderer.invoke('node:switchVersion', version),
+    installVersion: (version: string) => ipcRenderer.invoke('node:installVersion', version)
   }
 })

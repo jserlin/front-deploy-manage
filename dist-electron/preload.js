@@ -71,5 +71,10 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
     getDbPath: () => electron.ipcRenderer.invoke("config:getDbPath"),
     clearAll: () => electron.ipcRenderer.invoke("config:clearAll"),
     openDataDir: () => electron.ipcRenderer.invoke("config:openDataDir")
+  },
+  node: {
+    checkVersion: (expectedVersion) => electron.ipcRenderer.invoke("node:checkVersion", expectedVersion),
+    switchVersion: (version) => electron.ipcRenderer.invoke("node:switchVersion", version),
+    installVersion: (version) => electron.ipcRenderer.invoke("node:installVersion", version)
   }
 });

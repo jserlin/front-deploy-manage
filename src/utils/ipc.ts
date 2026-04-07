@@ -66,6 +66,11 @@ interface ElectronAPI {
     clearAll: () => Promise<any>
     openDataDir: () => Promise<any>
   }
+  node: {
+    checkVersion: (expectedVersion: string) => Promise<any>
+    switchVersion: (version: string) => Promise<any>
+    installVersion: (version: string) => Promise<any>
+  }
 }
 
 declare global {

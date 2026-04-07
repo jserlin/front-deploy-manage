@@ -62,6 +62,10 @@
             <el-icon><Setting /></el-icon>
             <span>{{ project.buildCommand }}</span>
           </div>
+          <div class="info-item" v-if="project.nodeVersion">
+            <el-icon><Monitor /></el-icon>
+            <el-tag size="small" type="info">Node {{ project.nodeVersion }}</el-tag>
+          </div>
         </div>
 
         <div class="card-actions">
@@ -114,6 +118,24 @@
 
         <el-form-item label="产物目录" prop="outputDir">
           <el-input v-model="formData.outputDir" placeholder="dist" />
+        </el-form-item>
+
+        <el-form-item label="Node 版本">
+          <el-select
+            v-model="formData.nodeVersion"
+            placeholder="选择或输入版本号"
+            clearable
+            filterable
+            allow-create
+            style="width: 100%"
+          >
+            <el-option
+              v-for="ver in nodeVersions"
+              :key="ver"
+              :label="ver"
+              :value="ver"
+            />
+          </el-select>
         </el-form-item>
 
         <el-form-item label="所属分组">
@@ -277,13 +299,22 @@ const formData = ref({
   buildCommand: 'npm run build',
   outputDir: 'dist',
   groupId: null as number | null,
-  description: ''
+  description: '',
+  nodeVersion: ''
 })
 
 const rules = {
   name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
   localPath: [{ required: true, message: '请选择项目路径', trigger: 'blur' }]
 }
+
+const nodeVersions = computed(() => {
+  const versions = new Set<string>()
+  projects.value.forEach(p => {
+    if (p.nodeVersion) versions.add(p.nodeVersion)
+  })
+  return Array.from(versions).sort()
+})
 
 const filteredProjects = computed(() => {
   let result = projects.value
@@ -349,7 +380,8 @@ const editProject = (project: Project) => {
     buildCommand: project.buildCommand || 'npm run build',
     outputDir: project.outputDir || 'dist',
     groupId: project.groupId || null,
-    description: project.description || ''
+    description: project.description || '',
+    nodeVersion: project.nodeVersion || ''
   }
   dialogVisible.value = true
 }
@@ -431,7 +463,8 @@ const resetForm = () => {
     buildCommand: 'npm run build',
     outputDir: 'dist',
     groupId: null,
-    description: ''
+    description: '',
+    nodeVersion: ''
   }
 }
 

@@ -15,10 +15,39 @@ export interface Project {
   localPath: string
   buildCommand: string
   outputDir: string
+  nodeVersion?: string
 }
 
 export class BuildService {
   private currentProcess: ChildProcess | null = null
+
+  private getNodeEnvPath(nodeVersion?: string): { [key: string]: string | undefined } {
+    if (!nodeVersion) {
+      return { ...process.env, NODE_ENV: 'production' }
+    }
+
+    const nvmHome = process.env.NVM_HOME
+    if (!nvmHome) {
+      return { ...process.env, NODE_ENV: 'production' }
+    }
+
+    const normalized = nodeVersion.startsWith('v') ? nodeVersion : `v${nodeVersion}`
+    const nodeDir = path.join(nvmHome, normalized)
+    if (!fs.existsSync(nodeDir)) {
+      logger.warn(`Node ${normalized} directory not found: ${nodeDir}, using default Node`)
+      return { ...process.env, NODE_ENV: 'production' }
+    }
+
+    const currentPath = process.env.PATH || ''
+    const newPath = `${nodeDir};${currentPath}`
+    logger.info(`Injecting Node ${normalized} into PATH: ${nodeDir}`)
+
+    return {
+      ...process.env,
+      PATH: newPath,
+      NODE_ENV: 'production'
+    }
+  }
 
   async build(
     project: Project,
@@ -28,7 +57,6 @@ export class BuildService {
       try {
         logger.info(`Starting build for project: ${project.name}`)
         
-        // 检查项目目录是否存在
         if (!fs.existsSync(project.localPath)) {
           resolve({
             success: false,
@@ -39,11 +67,12 @@ export class BuildService {
         }
 
         const [command, ...args] = project.buildCommand.split(' ')
+        const env = this.getNodeEnvPath(project.nodeVersion)
         
         this.currentProcess = spawn(command, args, {
           cwd: project.localPath,
           shell: true,
-          env: { ...process.env, NODE_ENV: 'production' }
+          env
         })
 
         let output = ''
