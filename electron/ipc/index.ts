@@ -482,6 +482,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
       }
       if (backupEnabled) {
         log('备份 SVN 目录...')
+        const backupResult = await svnService.backup(svnPath, svnCredential)
+        log(`备份完成: ${backupResult}`)
       }
       log(`上传到 SVN: ${svnPath}`)
       const outputPath = path.join(project.localPath, project.outputDir)

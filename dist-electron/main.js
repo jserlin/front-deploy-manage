@@ -62,7 +62,7 @@ var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof win
 function getDefaultExportFromCjs(x) {
   return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
 }
-var fs$i = {};
+var fs$j = {};
 var universalify$1 = {};
 universalify$1.fromCallback = function(fn) {
   return Object.defineProperty(function(...args) {
@@ -472,7 +472,7 @@ function clone$1(obj) {
   });
   return copy2;
 }
-var fs$h = require$$0$2;
+var fs$i = require$$0$2;
 var polyfills = polyfills$1;
 var legacy = legacyStreams;
 var clone = clone_1;
@@ -504,12 +504,12 @@ else if (/\bgfs4\b/i.test(process.env.NODE_DEBUG || ""))
     m = "GFS4: " + m.split(/\n/).join("\nGFS4: ");
     console.error(m);
   };
-if (!fs$h[gracefulQueue]) {
+if (!fs$i[gracefulQueue]) {
   var queue = commonjsGlobal[gracefulQueue] || [];
-  publishQueue(fs$h, queue);
-  fs$h.close = function(fs$close) {
+  publishQueue(fs$i, queue);
+  fs$i.close = function(fs$close) {
     function close(fd, cb) {
-      return fs$close.call(fs$h, fd, function(err) {
+      return fs$close.call(fs$i, fd, function(err) {
         if (!err) {
           resetQueue();
         }
@@ -521,31 +521,31 @@ if (!fs$h[gracefulQueue]) {
       value: fs$close
     });
     return close;
-  }(fs$h.close);
-  fs$h.closeSync = function(fs$closeSync) {
+  }(fs$i.close);
+  fs$i.closeSync = function(fs$closeSync) {
     function closeSync(fd) {
-      fs$closeSync.apply(fs$h, arguments);
+      fs$closeSync.apply(fs$i, arguments);
       resetQueue();
     }
     Object.defineProperty(closeSync, previousSymbol, {
       value: fs$closeSync
     });
     return closeSync;
-  }(fs$h.closeSync);
+  }(fs$i.closeSync);
   if (/\bgfs4\b/i.test(process.env.NODE_DEBUG || "")) {
     process.on("exit", function() {
-      debug$1(fs$h[gracefulQueue]);
-      require$$5.equal(fs$h[gracefulQueue].length, 0);
+      debug$1(fs$i[gracefulQueue]);
+      require$$5.equal(fs$i[gracefulQueue].length, 0);
     });
   }
 }
 if (!commonjsGlobal[gracefulQueue]) {
-  publishQueue(commonjsGlobal, fs$h[gracefulQueue]);
+  publishQueue(commonjsGlobal, fs$i[gracefulQueue]);
 }
-var gracefulFs = patch(clone(fs$h));
-if (process.env.TEST_GRACEFUL_FS_GLOBAL_PATCH && !fs$h.__patched) {
-  gracefulFs = patch(fs$h);
-  fs$h.__patched = true;
+var gracefulFs = patch(clone(fs$i));
+if (process.env.TEST_GRACEFUL_FS_GLOBAL_PATCH && !fs$i.__patched) {
+  gracefulFs = patch(fs$i);
+  fs$i.__patched = true;
 }
 function patch(fs2) {
   polyfills(fs2);
@@ -787,16 +787,16 @@ function patch(fs2) {
 }
 function enqueue(elem) {
   debug$1("ENQUEUE", elem[0].name, elem[1]);
-  fs$h[gracefulQueue].push(elem);
+  fs$i[gracefulQueue].push(elem);
   retry();
 }
 var retryTimer;
 function resetQueue() {
   var now = Date.now();
-  for (var i = 0; i < fs$h[gracefulQueue].length; ++i) {
-    if (fs$h[gracefulQueue][i].length > 2) {
-      fs$h[gracefulQueue][i][3] = now;
-      fs$h[gracefulQueue][i][4] = now;
+  for (var i = 0; i < fs$i[gracefulQueue].length; ++i) {
+    if (fs$i[gracefulQueue][i].length > 2) {
+      fs$i[gracefulQueue][i][3] = now;
+      fs$i[gracefulQueue][i][4] = now;
     }
   }
   retry();
@@ -804,9 +804,9 @@ function resetQueue() {
 function retry() {
   clearTimeout(retryTimer);
   retryTimer = void 0;
-  if (fs$h[gracefulQueue].length === 0)
+  if (fs$i[gracefulQueue].length === 0)
     return;
-  var elem = fs$h[gracefulQueue].shift();
+  var elem = fs$i[gracefulQueue].shift();
   var fn = elem[0];
   var args = elem[1];
   var err = elem[2];
@@ -828,7 +828,7 @@ function retry() {
       debug$1("RETRY", fn.name, args);
       fn.apply(null, args.concat([startTime]));
     } else {
-      fs$h[gracefulQueue].push(elem);
+      fs$i[gracefulQueue].push(elem);
     }
   }
   if (retryTimer === void 0) {
@@ -945,7 +945,7 @@ function retry() {
       "fs-extra-WARN0003"
     );
   }
-})(fs$i);
+})(fs$j);
 var makeDir$1 = {};
 var utils$1 = {};
 const path$b = path$c;
@@ -959,7 +959,7 @@ utils$1.checkPath = function checkPath(pth) {
     }
   }
 };
-const fs$g = fs$i;
+const fs$h = fs$j;
 const { checkPath: checkPath2 } = utils$1;
 const getMode = (options) => {
   const defaults = { mode: 511 };
@@ -968,14 +968,14 @@ const getMode = (options) => {
 };
 makeDir$1.makeDir = async (dir, options) => {
   checkPath2(dir);
-  return fs$g.mkdir(dir, {
+  return fs$h.mkdir(dir, {
     mode: getMode(options),
     recursive: true
   });
 };
 makeDir$1.makeDirSync = (dir, options) => {
   checkPath2(dir);
-  return fs$g.mkdirSync(dir, {
+  return fs$h.mkdirSync(dir, {
     mode: getMode(options),
     recursive: true
   });
@@ -993,24 +993,24 @@ var mkdirs$2 = {
   ensureDirSync: makeDirSync
 };
 const u$d = universalify$1.fromPromise;
-const fs$f = fs$i;
+const fs$g = fs$j;
 function pathExists$6(path2) {
-  return fs$f.access(path2).then(() => true).catch(() => false);
+  return fs$g.access(path2).then(() => true).catch(() => false);
 }
 var pathExists_1 = {
   pathExists: u$d(pathExists$6),
-  pathExistsSync: fs$f.existsSync
+  pathExistsSync: fs$g.existsSync
 };
-const fs$e = fs$i;
+const fs$f = fs$j;
 const u$c = universalify$1.fromPromise;
 async function utimesMillis$1(path2, atime, mtime) {
-  const fd = await fs$e.open(path2, "r+");
+  const fd = await fs$f.open(path2, "r+");
   let closeErr = null;
   try {
-    await fs$e.futimes(fd, atime, mtime);
+    await fs$f.futimes(fd, atime, mtime);
   } finally {
     try {
-      await fs$e.close(fd);
+      await fs$f.close(fd);
     } catch (e) {
       closeErr = e;
     }
@@ -1020,19 +1020,19 @@ async function utimesMillis$1(path2, atime, mtime) {
   }
 }
 function utimesMillisSync$1(path2, atime, mtime) {
-  const fd = fs$e.openSync(path2, "r+");
-  fs$e.futimesSync(fd, atime, mtime);
-  return fs$e.closeSync(fd);
+  const fd = fs$f.openSync(path2, "r+");
+  fs$f.futimesSync(fd, atime, mtime);
+  return fs$f.closeSync(fd);
 }
 var utimes = {
   utimesMillis: u$c(utimesMillis$1),
   utimesMillisSync: utimesMillisSync$1
 };
-const fs$d = fs$i;
+const fs$e = fs$j;
 const path$a = path$c;
 const u$b = universalify$1.fromPromise;
 function getStats$1(src2, dest, opts) {
-  const statFunc = opts.dereference ? (file2) => fs$d.stat(file2, { bigint: true }) : (file2) => fs$d.lstat(file2, { bigint: true });
+  const statFunc = opts.dereference ? (file2) => fs$e.stat(file2, { bigint: true }) : (file2) => fs$e.lstat(file2, { bigint: true });
   return Promise.all([
     statFunc(src2),
     statFunc(dest).catch((err) => {
@@ -1043,7 +1043,7 @@ function getStats$1(src2, dest, opts) {
 }
 function getStatsSync(src2, dest, opts) {
   let destStat;
-  const statFunc = opts.dereference ? (file2) => fs$d.statSync(file2, { bigint: true }) : (file2) => fs$d.lstatSync(file2, { bigint: true });
+  const statFunc = opts.dereference ? (file2) => fs$e.statSync(file2, { bigint: true }) : (file2) => fs$e.lstatSync(file2, { bigint: true });
   const srcStat = statFunc(src2);
   try {
     destStat = statFunc(dest);
@@ -1105,7 +1105,7 @@ async function checkParentPaths(src2, srcStat, dest, funcName) {
   if (destParent === srcParent || destParent === path$a.parse(destParent).root) return;
   let destStat;
   try {
-    destStat = await fs$d.stat(destParent, { bigint: true });
+    destStat = await fs$e.stat(destParent, { bigint: true });
   } catch (err) {
     if (err.code === "ENOENT") return;
     throw err;
@@ -1121,7 +1121,7 @@ function checkParentPathsSync(src2, srcStat, dest, funcName) {
   if (destParent === srcParent || destParent === path$a.parse(destParent).root) return;
   let destStat;
   try {
-    destStat = fs$d.statSync(destParent, { bigint: true });
+    destStat = fs$e.statSync(destParent, { bigint: true });
   } catch (err) {
     if (err.code === "ENOENT") return;
     throw err;
@@ -1174,7 +1174,7 @@ async function asyncIteratorConcurrentProcess$1(iterator, fn) {
 var async = {
   asyncIteratorConcurrentProcess: asyncIteratorConcurrentProcess$1
 };
-const fs$c = fs$i;
+const fs$d = fs$j;
 const path$9 = path$c;
 const { mkdirs: mkdirs$1 } = mkdirs$2;
 const { pathExists: pathExists$5 } = pathExists_1;
@@ -1210,7 +1210,7 @@ async function runFilter(src2, dest, opts) {
   return opts.filter(src2, dest);
 }
 async function getStatsAndPerformCopy(destStat, src2, dest, opts) {
-  const statFn = opts.dereference ? fs$c.stat : fs$c.lstat;
+  const statFn = opts.dereference ? fs$d.stat : fs$d.lstat;
   const srcStat = await statFn(src2);
   if (srcStat.isDirectory()) return onDir$1(srcStat, destStat, src2, dest, opts);
   if (srcStat.isFile() || srcStat.isCharacterDevice() || srcStat.isBlockDevice()) return onFile$1(srcStat, destStat, src2, dest, opts);
@@ -1222,7 +1222,7 @@ async function getStatsAndPerformCopy(destStat, src2, dest, opts) {
 async function onFile$1(srcStat, destStat, src2, dest, opts) {
   if (!destStat) return copyFile$1(srcStat, src2, dest, opts);
   if (opts.overwrite) {
-    await fs$c.unlink(dest);
+    await fs$d.unlink(dest);
     return copyFile$1(srcStat, src2, dest, opts);
   }
   if (opts.errorOnExist) {
@@ -1230,27 +1230,27 @@ async function onFile$1(srcStat, destStat, src2, dest, opts) {
   }
 }
 async function copyFile$1(srcStat, src2, dest, opts) {
-  await fs$c.copyFile(src2, dest);
+  await fs$d.copyFile(src2, dest);
   if (opts.preserveTimestamps) {
     if (fileIsNotWritable$1(srcStat.mode)) {
       await makeFileWritable$1(dest, srcStat.mode);
     }
-    const updatedSrcStat = await fs$c.stat(src2);
+    const updatedSrcStat = await fs$d.stat(src2);
     await utimesMillis(dest, updatedSrcStat.atime, updatedSrcStat.mtime);
   }
-  return fs$c.chmod(dest, srcStat.mode);
+  return fs$d.chmod(dest, srcStat.mode);
 }
 function fileIsNotWritable$1(srcMode) {
   return (srcMode & 128) === 0;
 }
 function makeFileWritable$1(dest, srcMode) {
-  return fs$c.chmod(dest, srcMode | 128);
+  return fs$d.chmod(dest, srcMode | 128);
 }
 async function onDir$1(srcStat, destStat, src2, dest, opts) {
   if (!destStat) {
-    await fs$c.mkdir(dest);
+    await fs$d.mkdir(dest);
   }
-  await asyncIteratorConcurrentProcess(await fs$c.opendir(src2), async (item) => {
+  await asyncIteratorConcurrentProcess(await fs$d.opendir(src2), async (item) => {
     const srcItem = path$9.join(src2, item.name);
     const destItem = path$9.join(dest, item.name);
     const include = await runFilter(srcItem, destItem, opts);
@@ -1260,22 +1260,22 @@ async function onDir$1(srcStat, destStat, src2, dest, opts) {
     }
   });
   if (!destStat) {
-    await fs$c.chmod(dest, srcStat.mode);
+    await fs$d.chmod(dest, srcStat.mode);
   }
 }
 async function onLink$1(destStat, src2, dest, opts) {
-  let resolvedSrc = await fs$c.readlink(src2);
+  let resolvedSrc = await fs$d.readlink(src2);
   if (opts.dereference) {
     resolvedSrc = path$9.resolve(process.cwd(), resolvedSrc);
   }
   if (!destStat) {
-    return fs$c.symlink(resolvedSrc, dest);
+    return fs$d.symlink(resolvedSrc, dest);
   }
   let resolvedDest = null;
   try {
-    resolvedDest = await fs$c.readlink(dest);
+    resolvedDest = await fs$d.readlink(dest);
   } catch (e) {
-    if (e.code === "EINVAL" || e.code === "UNKNOWN") return fs$c.symlink(resolvedSrc, dest);
+    if (e.code === "EINVAL" || e.code === "UNKNOWN") return fs$d.symlink(resolvedSrc, dest);
     throw e;
   }
   if (opts.dereference) {
@@ -1289,11 +1289,11 @@ async function onLink$1(destStat, src2, dest, opts) {
       throw new Error(`Cannot overwrite '${resolvedDest}' with '${resolvedSrc}'.`);
     }
   }
-  await fs$c.unlink(dest);
-  return fs$c.symlink(resolvedSrc, dest);
+  await fs$d.unlink(dest);
+  return fs$d.symlink(resolvedSrc, dest);
 }
 var copy_1 = copy$2;
-const fs$b = gracefulFs;
+const fs$c = gracefulFs;
 const path$8 = path$c;
 const mkdirsSync$1 = mkdirs$2.mkdirsSync;
 const utimesMillisSync = utimes.utimesMillisSync;
@@ -1316,11 +1316,11 @@ function copySync$1(src2, dest, opts) {
   stat$2.checkParentPathsSync(src2, srcStat, dest, "copy");
   if (opts.filter && !opts.filter(src2, dest)) return;
   const destParent = path$8.dirname(dest);
-  if (!fs$b.existsSync(destParent)) mkdirsSync$1(destParent);
+  if (!fs$c.existsSync(destParent)) mkdirsSync$1(destParent);
   return getStats(destStat, src2, dest, opts);
 }
 function getStats(destStat, src2, dest, opts) {
-  const statSync = opts.dereference ? fs$b.statSync : fs$b.lstatSync;
+  const statSync = opts.dereference ? fs$c.statSync : fs$c.lstatSync;
   const srcStat = statSync(src2);
   if (srcStat.isDirectory()) return onDir(srcStat, destStat, src2, dest, opts);
   else if (srcStat.isFile() || srcStat.isCharacterDevice() || srcStat.isBlockDevice()) return onFile(srcStat, destStat, src2, dest, opts);
@@ -1335,14 +1335,14 @@ function onFile(srcStat, destStat, src2, dest, opts) {
 }
 function mayCopyFile(srcStat, src2, dest, opts) {
   if (opts.overwrite) {
-    fs$b.unlinkSync(dest);
+    fs$c.unlinkSync(dest);
     return copyFile(srcStat, src2, dest, opts);
   } else if (opts.errorOnExist) {
     throw new Error(`'${dest}' already exists`);
   }
 }
 function copyFile(srcStat, src2, dest, opts) {
-  fs$b.copyFileSync(src2, dest);
+  fs$c.copyFileSync(src2, dest);
   if (opts.preserveTimestamps) handleTimestamps(srcStat.mode, src2, dest);
   return setDestMode(dest, srcStat.mode);
 }
@@ -1357,10 +1357,10 @@ function makeFileWritable(dest, srcMode) {
   return setDestMode(dest, srcMode | 128);
 }
 function setDestMode(dest, srcMode) {
-  return fs$b.chmodSync(dest, srcMode);
+  return fs$c.chmodSync(dest, srcMode);
 }
 function setDestTimestamps(src2, dest) {
-  const updatedSrcStat = fs$b.statSync(src2);
+  const updatedSrcStat = fs$c.statSync(src2);
   return utimesMillisSync(dest, updatedSrcStat.atime, updatedSrcStat.mtime);
 }
 function onDir(srcStat, destStat, src2, dest, opts) {
@@ -1368,12 +1368,12 @@ function onDir(srcStat, destStat, src2, dest, opts) {
   return copyDir(src2, dest, opts);
 }
 function mkDirAndCopy(srcMode, src2, dest, opts) {
-  fs$b.mkdirSync(dest);
+  fs$c.mkdirSync(dest);
   copyDir(src2, dest, opts);
   return setDestMode(dest, srcMode);
 }
 function copyDir(src2, dest, opts) {
-  const dir = fs$b.opendirSync(src2);
+  const dir = fs$c.opendirSync(src2);
   try {
     let dirent;
     while ((dirent = dir.readSync()) !== null) {
@@ -1391,18 +1391,18 @@ function copyDirItem(item, src2, dest, opts) {
   return getStats(destStat, srcItem, destItem, opts);
 }
 function onLink(destStat, src2, dest, opts) {
-  let resolvedSrc = fs$b.readlinkSync(src2);
+  let resolvedSrc = fs$c.readlinkSync(src2);
   if (opts.dereference) {
     resolvedSrc = path$8.resolve(process.cwd(), resolvedSrc);
   }
   if (!destStat) {
-    return fs$b.symlinkSync(resolvedSrc, dest);
+    return fs$c.symlinkSync(resolvedSrc, dest);
   } else {
     let resolvedDest;
     try {
-      resolvedDest = fs$b.readlinkSync(dest);
+      resolvedDest = fs$c.readlinkSync(dest);
     } catch (err) {
-      if (err.code === "EINVAL" || err.code === "UNKNOWN") return fs$b.symlinkSync(resolvedSrc, dest);
+      if (err.code === "EINVAL" || err.code === "UNKNOWN") return fs$c.symlinkSync(resolvedSrc, dest);
       throw err;
     }
     if (opts.dereference) {
@@ -1420,8 +1420,8 @@ function onLink(destStat, src2, dest, opts) {
   }
 }
 function copyLink(resolvedSrc, dest) {
-  fs$b.unlinkSync(dest);
-  return fs$b.symlinkSync(resolvedSrc, dest);
+  fs$c.unlinkSync(dest);
+  return fs$c.symlinkSync(resolvedSrc, dest);
 }
 var copySync_1 = copySync$1;
 const u$a = universalify$1.fromPromise;
@@ -1429,27 +1429,27 @@ var copy$1 = {
   copy: u$a(copy_1),
   copySync: copySync_1
 };
-const fs$a = gracefulFs;
+const fs$b = gracefulFs;
 const u$9 = universalify$1.fromCallback;
 function remove$3(path2, callback) {
-  fs$a.rm(path2, { recursive: true, force: true }, callback);
+  fs$b.rm(path2, { recursive: true, force: true }, callback);
 }
 function removeSync$1(path2) {
-  fs$a.rmSync(path2, { recursive: true, force: true });
+  fs$b.rmSync(path2, { recursive: true, force: true });
 }
 var remove_1 = {
   remove: u$9(remove$3),
   removeSync: removeSync$1
 };
 const u$8 = universalify$1.fromPromise;
-const fs$9 = fs$i;
+const fs$a = fs$j;
 const path$7 = path$c;
 const mkdir$3 = mkdirs$2;
 const remove$2 = remove_1;
 const emptyDir = u$8(async function emptyDir2(dir) {
   let items;
   try {
-    items = await fs$9.readdir(dir);
+    items = await fs$a.readdir(dir);
   } catch {
     return mkdir$3.mkdirs(dir);
   }
@@ -1458,7 +1458,7 @@ const emptyDir = u$8(async function emptyDir2(dir) {
 function emptyDirSync(dir) {
   let items;
   try {
-    items = fs$9.readdirSync(dir);
+    items = fs$a.readdirSync(dir);
   } catch {
     return mkdir$3.mkdirsSync(dir);
   }
@@ -1475,51 +1475,51 @@ var empty = {
 };
 const u$7 = universalify$1.fromPromise;
 const path$6 = path$c;
-const fs$8 = fs$i;
+const fs$9 = fs$j;
 const mkdir$2 = mkdirs$2;
 async function createFile$1(file2) {
   let stats;
   try {
-    stats = await fs$8.stat(file2);
+    stats = await fs$9.stat(file2);
   } catch {
   }
   if (stats && stats.isFile()) return;
   const dir = path$6.dirname(file2);
   let dirStats = null;
   try {
-    dirStats = await fs$8.stat(dir);
+    dirStats = await fs$9.stat(dir);
   } catch (err) {
     if (err.code === "ENOENT") {
       await mkdir$2.mkdirs(dir);
-      await fs$8.writeFile(file2, "");
+      await fs$9.writeFile(file2, "");
       return;
     } else {
       throw err;
     }
   }
   if (dirStats.isDirectory()) {
-    await fs$8.writeFile(file2, "");
+    await fs$9.writeFile(file2, "");
   } else {
-    await fs$8.readdir(dir);
+    await fs$9.readdir(dir);
   }
 }
 function createFileSync$1(file2) {
   let stats;
   try {
-    stats = fs$8.statSync(file2);
+    stats = fs$9.statSync(file2);
   } catch {
   }
   if (stats && stats.isFile()) return;
   const dir = path$6.dirname(file2);
   try {
-    if (!fs$8.statSync(dir).isDirectory()) {
-      fs$8.readdirSync(dir);
+    if (!fs$9.statSync(dir).isDirectory()) {
+      fs$9.readdirSync(dir);
     }
   } catch (err) {
     if (err && err.code === "ENOENT") mkdir$2.mkdirsSync(dir);
     else throw err;
   }
-  fs$8.writeFileSync(file2, "");
+  fs$9.writeFileSync(file2, "");
 }
 var file$1 = {
   createFile: u$7(createFile$1),
@@ -1527,19 +1527,19 @@ var file$1 = {
 };
 const u$6 = universalify$1.fromPromise;
 const path$5 = path$c;
-const fs$7 = fs$i;
+const fs$8 = fs$j;
 const mkdir$1 = mkdirs$2;
 const { pathExists: pathExists$4 } = pathExists_1;
 const { areIdentical: areIdentical$1 } = stat$4;
 async function createLink$1(srcpath, dstpath) {
   let dstStat;
   try {
-    dstStat = await fs$7.lstat(dstpath);
+    dstStat = await fs$8.lstat(dstpath);
   } catch {
   }
   let srcStat;
   try {
-    srcStat = await fs$7.lstat(srcpath);
+    srcStat = await fs$8.lstat(srcpath);
   } catch (err) {
     err.message = err.message.replace("lstat", "ensureLink");
     throw err;
@@ -1550,39 +1550,39 @@ async function createLink$1(srcpath, dstpath) {
   if (!dirExists) {
     await mkdir$1.mkdirs(dir);
   }
-  await fs$7.link(srcpath, dstpath);
+  await fs$8.link(srcpath, dstpath);
 }
 function createLinkSync$1(srcpath, dstpath) {
   let dstStat;
   try {
-    dstStat = fs$7.lstatSync(dstpath);
+    dstStat = fs$8.lstatSync(dstpath);
   } catch {
   }
   try {
-    const srcStat = fs$7.lstatSync(srcpath);
+    const srcStat = fs$8.lstatSync(srcpath);
     if (dstStat && areIdentical$1(srcStat, dstStat)) return;
   } catch (err) {
     err.message = err.message.replace("lstat", "ensureLink");
     throw err;
   }
   const dir = path$5.dirname(dstpath);
-  const dirExists = fs$7.existsSync(dir);
-  if (dirExists) return fs$7.linkSync(srcpath, dstpath);
+  const dirExists = fs$8.existsSync(dir);
+  if (dirExists) return fs$8.linkSync(srcpath, dstpath);
   mkdir$1.mkdirsSync(dir);
-  return fs$7.linkSync(srcpath, dstpath);
+  return fs$8.linkSync(srcpath, dstpath);
 }
 var link = {
   createLink: u$6(createLink$1),
   createLinkSync: createLinkSync$1
 };
 const path$4 = path$c;
-const fs$6 = fs$i;
+const fs$7 = fs$j;
 const { pathExists: pathExists$3 } = pathExists_1;
 const u$5 = universalify$1.fromPromise;
 async function symlinkPaths$1(srcpath, dstpath) {
   if (path$4.isAbsolute(srcpath)) {
     try {
-      await fs$6.lstat(srcpath);
+      await fs$7.lstat(srcpath);
     } catch (err) {
       err.message = err.message.replace("lstat", "ensureSymlink");
       throw err;
@@ -1602,7 +1602,7 @@ async function symlinkPaths$1(srcpath, dstpath) {
     };
   }
   try {
-    await fs$6.lstat(srcpath);
+    await fs$7.lstat(srcpath);
   } catch (err) {
     err.message = err.message.replace("lstat", "ensureSymlink");
     throw err;
@@ -1614,7 +1614,7 @@ async function symlinkPaths$1(srcpath, dstpath) {
 }
 function symlinkPathsSync$1(srcpath, dstpath) {
   if (path$4.isAbsolute(srcpath)) {
-    const exists2 = fs$6.existsSync(srcpath);
+    const exists2 = fs$7.existsSync(srcpath);
     if (!exists2) throw new Error("absolute srcpath does not exist");
     return {
       toCwd: srcpath,
@@ -1623,14 +1623,14 @@ function symlinkPathsSync$1(srcpath, dstpath) {
   }
   const dstdir = path$4.dirname(dstpath);
   const relativeToDst = path$4.join(dstdir, srcpath);
-  const exists = fs$6.existsSync(relativeToDst);
+  const exists = fs$7.existsSync(relativeToDst);
   if (exists) {
     return {
       toCwd: relativeToDst,
       toDst: srcpath
     };
   }
-  const srcExists = fs$6.existsSync(srcpath);
+  const srcExists = fs$7.existsSync(srcpath);
   if (!srcExists) throw new Error("relative srcpath does not exist");
   return {
     toCwd: srcpath,
@@ -1641,13 +1641,13 @@ var symlinkPaths_1 = {
   symlinkPaths: u$5(symlinkPaths$1),
   symlinkPathsSync: symlinkPathsSync$1
 };
-const fs$5 = fs$i;
+const fs$6 = fs$j;
 const u$4 = universalify$1.fromPromise;
 async function symlinkType$1(srcpath, type) {
   if (type) return type;
   let stats;
   try {
-    stats = await fs$5.lstat(srcpath);
+    stats = await fs$6.lstat(srcpath);
   } catch {
     return "file";
   }
@@ -1657,7 +1657,7 @@ function symlinkTypeSync$1(srcpath, type) {
   if (type) return type;
   let stats;
   try {
-    stats = fs$5.lstatSync(srcpath);
+    stats = fs$6.lstatSync(srcpath);
   } catch {
     return "file";
   }
@@ -1669,7 +1669,7 @@ var symlinkType_1 = {
 };
 const u$3 = universalify$1.fromPromise;
 const path$3 = path$c;
-const fs$4 = fs$i;
+const fs$5 = fs$j;
 const { mkdirs, mkdirsSync } = mkdirs$2;
 const { symlinkPaths, symlinkPathsSync } = symlinkPaths_1;
 const { symlinkType, symlinkTypeSync } = symlinkType_1;
@@ -1678,23 +1678,23 @@ const { areIdentical } = stat$4;
 async function createSymlink$1(srcpath, dstpath, type) {
   let stats;
   try {
-    stats = await fs$4.lstat(dstpath);
+    stats = await fs$5.lstat(dstpath);
   } catch {
   }
   if (stats && stats.isSymbolicLink()) {
     let srcStat;
     if (path$3.isAbsolute(srcpath)) {
-      srcStat = await fs$4.stat(srcpath);
+      srcStat = await fs$5.stat(srcpath);
     } else {
       const dstdir = path$3.dirname(dstpath);
       const relativeToDst = path$3.join(dstdir, srcpath);
       try {
-        srcStat = await fs$4.stat(relativeToDst);
+        srcStat = await fs$5.stat(relativeToDst);
       } catch {
-        srcStat = await fs$4.stat(srcpath);
+        srcStat = await fs$5.stat(srcpath);
       }
     }
-    const dstStat = await fs$4.stat(dstpath);
+    const dstStat = await fs$5.stat(dstpath);
     if (areIdentical(srcStat, dstStat)) return;
   }
   const relative = await symlinkPaths(srcpath, dstpath);
@@ -1704,38 +1704,38 @@ async function createSymlink$1(srcpath, dstpath, type) {
   if (!await pathExists$2(dir)) {
     await mkdirs(dir);
   }
-  return fs$4.symlink(srcpath, dstpath, toType);
+  return fs$5.symlink(srcpath, dstpath, toType);
 }
 function createSymlinkSync$1(srcpath, dstpath, type) {
   let stats;
   try {
-    stats = fs$4.lstatSync(dstpath);
+    stats = fs$5.lstatSync(dstpath);
   } catch {
   }
   if (stats && stats.isSymbolicLink()) {
     let srcStat;
     if (path$3.isAbsolute(srcpath)) {
-      srcStat = fs$4.statSync(srcpath);
+      srcStat = fs$5.statSync(srcpath);
     } else {
       const dstdir = path$3.dirname(dstpath);
       const relativeToDst = path$3.join(dstdir, srcpath);
       try {
-        srcStat = fs$4.statSync(relativeToDst);
+        srcStat = fs$5.statSync(relativeToDst);
       } catch {
-        srcStat = fs$4.statSync(srcpath);
+        srcStat = fs$5.statSync(srcpath);
       }
     }
-    const dstStat = fs$4.statSync(dstpath);
+    const dstStat = fs$5.statSync(dstpath);
     if (areIdentical(srcStat, dstStat)) return;
   }
   const relative = symlinkPathsSync(srcpath, dstpath);
   srcpath = relative.toDst;
   type = symlinkTypeSync(relative.toCwd, type);
   const dir = path$3.dirname(dstpath);
-  const exists = fs$4.existsSync(dir);
-  if (exists) return fs$4.symlinkSync(srcpath, dstpath, type);
+  const exists = fs$5.existsSync(dir);
+  if (exists) return fs$5.symlinkSync(srcpath, dstpath, type);
   mkdirsSync(dir);
-  return fs$4.symlinkSync(srcpath, dstpath, type);
+  return fs$5.symlinkSync(srcpath, dstpath, type);
 }
 var symlink = {
   createSymlink: u$3(createSymlink$1),
@@ -1846,7 +1846,7 @@ var jsonfile = {
   writeJsonSync: jsonFile$1.writeFileSync
 };
 const u$2 = universalify$1.fromPromise;
-const fs$3 = fs$i;
+const fs$4 = fs$j;
 const path$2 = path$c;
 const mkdir = mkdirs$2;
 const pathExists$1 = pathExists_1.pathExists;
@@ -1855,14 +1855,14 @@ async function outputFile$1(file2, data, encoding = "utf-8") {
   if (!await pathExists$1(dir)) {
     await mkdir.mkdirs(dir);
   }
-  return fs$3.writeFile(file2, data, encoding);
+  return fs$4.writeFile(file2, data, encoding);
 }
 function outputFileSync$1(file2, ...args) {
   const dir = path$2.dirname(file2);
-  if (!fs$3.existsSync(dir)) {
+  if (!fs$4.existsSync(dir)) {
     mkdir.mkdirsSync(dir);
   }
-  fs$3.writeFileSync(file2, ...args);
+  fs$4.writeFileSync(file2, ...args);
 }
 var outputFile_1 = {
   outputFile: u$2(outputFile$1),
@@ -1893,7 +1893,7 @@ jsonFile.writeJSONSync = jsonFile.writeJsonSync;
 jsonFile.readJSON = jsonFile.readJson;
 jsonFile.readJSONSync = jsonFile.readJsonSync;
 var json = jsonFile;
-const fs$2 = fs$i;
+const fs$3 = fs$j;
 const path$1 = path$c;
 const { copy } = copy$1;
 const { remove: remove$1 } = remove_1;
@@ -1920,7 +1920,7 @@ async function doRename$1(src2, dest, overwrite, isChangingCase) {
     }
   }
   try {
-    await fs$2.rename(src2, dest);
+    await fs$3.rename(src2, dest);
   } catch (err) {
     if (err.code !== "EXDEV") {
       throw err;
@@ -1938,7 +1938,7 @@ async function moveAcrossDevice$1(src2, dest, overwrite) {
   return remove$1(src2);
 }
 var move_1 = move$1;
-const fs$1 = gracefulFs;
+const fs$2 = gracefulFs;
 const path = path$c;
 const copySync = copy$1.copySync;
 const removeSync = remove_1.removeSync;
@@ -1963,12 +1963,12 @@ function doRename(src2, dest, overwrite, isChangingCase) {
     removeSync(dest);
     return rename(src2, dest, overwrite);
   }
-  if (fs$1.existsSync(dest)) throw new Error("dest already exists.");
+  if (fs$2.existsSync(dest)) throw new Error("dest already exists.");
   return rename(src2, dest, overwrite);
 }
 function rename(src2, dest, overwrite) {
   try {
-    fs$1.renameSync(src2, dest);
+    fs$2.renameSync(src2, dest);
   } catch (err) {
     if (err.code !== "EXDEV") throw err;
     return moveAcrossDevice(src2, dest, overwrite);
@@ -1991,7 +1991,7 @@ var move = {
 };
 var lib = {
   // Export promiseified graceful-fs:
-  ...fs$i,
+  ...fs$j,
   // Export extra methods:
   ...copy$1,
   ...empty,
@@ -2003,7 +2003,7 @@ var lib = {
   ...pathExists_1,
   ...remove_1
 };
-const fs = /* @__PURE__ */ getDefaultExportFromCjs(lib);
+const fs$1 = /* @__PURE__ */ getDefaultExportFromCjs(lib);
 const defaultData = {
   groups: [],
   projects: [],
@@ -2017,19 +2017,19 @@ class DatabaseManager {
     __publicField(this, "data");
     __publicField(this, "dbPath");
     this.dbPath = dbPath;
-    if (fs.existsSync(dbPath)) {
-      this.data = fs.readJsonSync(dbPath);
+    if (fs$1.existsSync(dbPath)) {
+      this.data = fs$1.readJsonSync(dbPath);
     } else {
       this.data = JSON.parse(JSON.stringify(defaultData));
     }
   }
   initialize() {
-    fs.ensureDirSync(path$c.join(this.dbPath, ".."));
+    fs$1.ensureDirSync(path$c.join(this.dbPath, ".."));
     this.save();
     console.log("Database initialized at:", this.dbPath);
   }
   save() {
-    fs.writeJsonSync(this.dbPath, this.data, { spaces: 2 });
+    fs$1.writeJsonSync(this.dbPath, this.data, { spaces: 2 });
   }
   /**
    * 从 SQL 或表名中提取主表名
@@ -10509,6 +10509,7 @@ class SSHService {
   }
 }
 require$$4.promisify(require$$0$3.exec);
+const fs = require("fs-extra");
 class SVNService {
   constructor() {
     __publicField(this, "currentProcesses", []);
@@ -10562,12 +10563,74 @@ class SVNService {
       return { success: false, message: error.message };
     }
   }
+  buildSvnUrl(baseUrl, path2) {
+    let fullPath;
+    if (path2.startsWith("http://") || path2.startsWith("https://") || path2.startsWith("svn://")) {
+      fullPath = path2;
+    } else {
+      const base = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+      const relativePath = path2.startsWith("/") ? path2 : "/" + path2;
+      fullPath = base + relativePath;
+    }
+    try {
+      const decoded = decodeURIComponent(fullPath);
+      return encodeURI(decoded);
+    } catch {
+      return encodeURI(fullPath);
+    }
+  }
+  getParentPath(url) {
+    const parts = url.split("/");
+    parts.pop();
+    return parts.join("/");
+  }
+  getDirName(url) {
+    const parts = url.split("/");
+    return parts.pop() || "";
+  }
+  async ensureSvnDirectoryExists(credential, svnPath, fullSvnUrl) {
+    try {
+      const password2 = credential.password ? CryptoUtil.decrypt(credential.password) : "";
+      const testCommand = `svn info --username "${credential.username}" --password "${password2}" --non-interactive "${fullSvnUrl}"`;
+      await this.execCommand(testCommand, { timeout: 1e4 });
+      return;
+    } catch (error) {
+      logger.info(`SVN directory does not exist, attempting to create: ${fullSvnUrl}`);
+    }
+    const password = credential.password ? CryptoUtil.decrypt(credential.password) : "";
+    const parentUrl = this.getParentPath(fullSvnUrl);
+    const dirName = this.getDirName(fullSvnUrl);
+    if (!dirName) {
+      throw new Error(`Cannot create SVN directory: invalid path ${fullSvnUrl}`);
+    }
+    const tempParentDir = require("os").tmpdir() + `/svn_parent_${Date.now()}`;
+    try {
+      const checkoutParentCmd = `svn checkout --depth empty --username "${credential.username}" --password "${password}" --non-interactive "${parentUrl}" "${tempParentDir}"`;
+      await this.execCommand(checkoutParentCmd, { timeout: 3e4 });
+    } catch (error) {
+      throw new Error(`Failed to checkout parent directory: ${parentUrl}. Error: ${error.message}`);
+    }
+    try {
+      const newDirPath = tempParentDir + "/" + dirName;
+      await fs.ensureDir(newDirPath);
+      const addCommand = `svn add "${newDirPath}"`;
+      await this.execCommand(addCommand, { timeout: 1e4 });
+      const commitCommand = `svn commit --username "${credential.username}" --password "${password}" --non-interactive -m "Create directory for deployment" "${newDirPath}"`;
+      await this.execCommand(commitCommand, { timeout: 3e4 });
+      logger.info(`SVN directory created: ${fullSvnUrl}`);
+    } finally {
+      await fs.remove(tempParentDir).catch(() => {
+      });
+    }
+  }
   async uploadDirectory(credential, localPath, svnPath, commitMessage) {
     try {
       this.checkAborted();
       const password = credential.password ? CryptoUtil.decrypt(credential.password) : "";
+      const fullSvnUrl = this.buildSvnUrl(credential.svnUrl, svnPath);
       const tempDir = `${localPath}_svn_temp`;
-      const checkoutCommand = `svn checkout --username "${credential.username}" --password "${password}" --non-interactive "${svnPath}" "${tempDir}"`;
+      await this.ensureSvnDirectoryExists(credential, svnPath, fullSvnUrl);
+      const checkoutCommand = `svn checkout --username "${credential.username}" --password "${password}" --non-interactive "${fullSvnUrl}" "${tempDir}"`;
       try {
         await this.execCommand(checkoutCommand, { timeout: 3e4 });
       } catch (error) {
@@ -10580,13 +10643,12 @@ class SVNService {
         }
       }
       this.checkAborted();
-      const fs2 = require("fs-extra");
-      await fs2.copy(localPath, tempDir, { overwrite: true });
+      await fs.copy(localPath, tempDir, { overwrite: true });
       const addCommand = `svn add --force "${tempDir}" --auto-props --parents --depth infinity`;
       await this.execCommand(addCommand, { timeout: 3e4 });
       const commitCommand = `svn commit --username "${credential.username}" --password "${password}" --non-interactive -m "${commitMessage}" "${tempDir}"`;
       await this.execCommand(commitCommand, { timeout: 6e4 });
-      await fs2.remove(tempDir);
+      await fs.remove(tempDir);
       logger.info("SVN upload completed successfully");
     } catch (error) {
       logger.error("SVN upload failed:", error);
@@ -10596,14 +10658,22 @@ class SVNService {
   async backup(svnPath, credential) {
     try {
       const password = credential.password ? CryptoUtil.decrypt(credential.password) : "";
+      const fullSvnUrl = this.buildSvnUrl(credential.svnUrl, svnPath);
+      try {
+        const testCommand = `svn info --username "${credential.username}" --password "${password}" --non-interactive "${fullSvnUrl}"`;
+        await this.execCommand(testCommand, { timeout: 1e4 });
+      } catch {
+        logger.info(`SVN backup skipped: directory does not exist - ${fullSvnUrl}`);
+        return "(目录不存在，跳过备份)";
+      }
       const now = /* @__PURE__ */ new Date();
       const pad = (n) => String(n).padStart(2, "0");
       const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-      const backupPath = `${svnPath}_backup_${timestamp}`;
-      const command = `svn copy --username "${credential.username}" --password "${password}" --non-interactive -m "Backup before deployment" "${svnPath}" "${backupPath}"`;
+      const backupUrl = `${fullSvnUrl}_backup_${timestamp}`;
+      const command = `svn copy --username "${credential.username}" --password "${password}" --non-interactive -m "Backup before deployment" "${fullSvnUrl}" "${backupUrl}"`;
       await this.execCommand(command, { timeout: 3e4 });
-      logger.info(`SVN backup created: ${backupPath}`);
-      return backupPath;
+      logger.info(`SVN backup created: ${backupUrl}`);
+      return backupUrl;
     } catch (error) {
       logger.error("SVN backup failed:", error);
       throw new Error(`SVN backup failed: ${error.message}`);
@@ -10612,7 +10682,8 @@ class SVNService {
   async getInfo(svnPath, credential) {
     try {
       const password = credential.password ? CryptoUtil.decrypt(credential.password) : "";
-      const command = `svn info --username "${credential.username}" --password "${password}" --non-interactive "${svnPath}"`;
+      const fullSvnUrl = this.buildSvnUrl(credential.svnUrl, svnPath);
+      const command = `svn info --username "${credential.username}" --password "${password}" --non-interactive "${fullSvnUrl}"`;
       const { stdout } = await this.execCommand(command, { timeout: 1e4 });
       return stdout;
     } catch (error) {
@@ -11317,6 +11388,8 @@ function registerIpcHandlers(database2) {
       }
       if (backupEnabled) {
         log2("备份 SVN 目录...");
+        const backupResult = await svnService.backup(svnPath, svnCredential);
+        log2(`备份完成: ${backupResult}`);
       }
       log2(`上传到 SVN: ${svnPath}`);
       const outputPath = path__namespace.join(project.localPath, project.outputDir);
