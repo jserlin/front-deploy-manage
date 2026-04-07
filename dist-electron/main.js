@@ -11062,9 +11062,10 @@ function registerIpcHandlers(database2) {
       const outputPath = require$$1__namespace.join(project.localPath, project.outputDir);
       await svnService.uploadDirectory(svnCredential, outputPath, svnPath, commitMessage);
       const commit = await gitService.getCurrentCommit(project.localPath);
+      const now = (/* @__PURE__ */ new Date()).toLocaleString("sv-SE");
       db.run(
-        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at) VALUES (?, 'svn', ?, ?, 'success', datetime('now','localtime'), datetime('now','localtime'))`,
-        [project.id, config.branch || "main", commit]
+        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [project.id, "svn", config.branch || "main", commit, "success", now, now]
       );
       event.sender.send("deploy:progress", { stage: "completed", message: "发布成功！" });
       return { success: true };
@@ -11112,9 +11113,9 @@ function registerIpcHandlers(database2) {
       }
       if (backupEnabled) {
         event.sender.send("deploy:progress", { stage: "backup", message: "备份远程目录..." });
-        const now = /* @__PURE__ */ new Date();
+        const now2 = /* @__PURE__ */ new Date();
         const pad = (n) => String(n).padStart(2, "0");
-        const backupTs = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+        const backupTs = `${now2.getFullYear()}${pad(now2.getMonth() + 1)}${pad(now2.getDate())}${pad(now2.getHours())}${pad(now2.getMinutes())}${pad(now2.getSeconds())}`;
         await sshService.execCommand(serverCredential, `mv ${remotePath} ${remotePath}_backup_${backupTs}`);
       }
       event.sender.send("deploy:progress", { stage: "uploading", message: "上传到服务器..." });
@@ -11123,9 +11124,10 @@ function registerIpcHandlers(database2) {
         event.sender.send("deploy:progress", { stage: "uploading", progress });
       });
       const commit = await gitService.getCurrentCommit(project.localPath);
+      const now = (/* @__PURE__ */ new Date()).toLocaleString("sv-SE");
       db.run(
-        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at) VALUES (?, 'server', ?, ?, 'success', datetime('now','localtime'), datetime('now','localtime'))`,
-        [project.id, config.branch || "main", commit]
+        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [project.id, "server", config.branch || "main", commit, "success", now, now]
       );
       event.sender.send("deploy:progress", { stage: "completed", message: "发布成功！" });
       return { success: true };
@@ -11192,9 +11194,10 @@ function registerIpcHandlers(database2) {
         }
       }
       const commit = await gitService.getCurrentCommit(project.localPath);
+      const now = (/* @__PURE__ */ new Date()).toLocaleString("sv-SE");
       db.run(
-        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at) VALUES (?, 'mixed', ?, ?, 'success', datetime('now','localtime'), datetime('now','localtime'))`,
-        [project.id, branch || "main", commit]
+        `INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [project.id, "mixed", branch || "main", commit, "success", now, now]
       );
       event.sender.send("deploy:progress", { stage: "completed", message: "混合发布成功！" });
       return { success: true };
@@ -11216,10 +11219,13 @@ function registerIpcHandlers(database2) {
   });
   require$$0$6.ipcMain.handle("deploy:getHistory", async (event, projectId) => {
     try {
-      const rows = projectId ? db.all("deploy_history").filter((h) => h.project_id === projectId) : db.all("deploy_history");
+      let rows = db.all("deploy_history");
+      if (projectId) {
+        rows = rows.filter((h) => h.project_id === projectId);
+      }
       const projects = db.all("projects");
       const projectMap = new Map(projects.map((p) => [p.id, p.name]));
-      const mapped = rows.slice(0, 50).map((h) => ({
+      const mapped = rows.map((h) => ({
         id: h.id,
         projectId: h.project_id,
         projectName: projectMap.get(h.project_id) || "",

@@ -76,6 +76,7 @@ const fetchHistory = async () => {
     const result = await window.electronAPI.deploy.getHistory()
     if (result.success) {
       historyList.value = result.data || []
+      console.log(`既然手边有树叶 ~ fetchHistory ~ historyList:`, historyList)
     } else {
       ElMessage.error(result.error || '获取历史失败')
     }
@@ -101,7 +102,8 @@ const getStatusType = (status: string) => {
     building: 'warning',
     uploading: 'warning',
     success: 'success',
-    failed: 'danger'
+    failed: 'danger',
+    cancelled: 'warning'
   }
   return types[status] || 'info'
 }
@@ -112,7 +114,8 @@ const getStatusLabel = (status: string) => {
     building: '构建中',
     uploading: '上传中',
     success: '成功',
-    failed: '失败'
+    failed: '失败',
+    cancelled: '已取消'
   }
   return labels[status] || status
 }
