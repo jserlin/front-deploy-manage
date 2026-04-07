@@ -7,6 +7,7 @@
           v-model="filterProjectId"
           placeholder="全部项目"
           clearable
+          filterable
           style="width: 200px; margin-right: 12px"
         >
           <el-option
@@ -52,7 +53,7 @@
         </el-form-item>
 
         <el-form-item label="关联项目" prop="projectId">
-          <el-select v-model="formData.projectId" placeholder="请选择项目" style="width: 100%">
+          <el-select v-model="formData.projectId" placeholder="请选择项目" filterable style="width: 100%">
             <el-option
               v-for="project in projects"
               :key="project.id"
@@ -72,7 +73,7 @@
 
         <template v-if="formData.deployType === 'svn' || formData.deployType === 'mixed'">
           <el-form-item label="SVN 凭证">
-            <el-select v-model="formData.svnCredentialId" placeholder="请选择 SVN 凭证" style="width: 100%">
+            <el-select v-model="formData.svnCredentialId" placeholder="请选择 SVN 凭证" filterable style="width: 100%">
               <el-option
                 v-for="cred in svnCredentials"
                 :key="cred.id"
@@ -91,7 +92,7 @@
 
         <template v-if="formData.deployType === 'server' || formData.deployType === 'mixed'">
           <el-form-item label="服务器凭证">
-            <el-select v-model="formData.serverCredentialId" placeholder="请选择服务器凭证" style="width: 100%">
+            <el-select v-model="formData.serverCredentialId" placeholder="请选择服务器凭证" filterable style="width: 100%">
               <el-option
                 v-for="cred in serverCredentials"
                 :key="cred.id"
