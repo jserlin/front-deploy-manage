@@ -7,7 +7,6 @@
           v-model="filterProjectId"
           placeholder="全部项目"
           clearable
-          filterable
           style="width: 200px; margin-right: 12px"
         >
           <el-option

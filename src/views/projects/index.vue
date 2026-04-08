@@ -25,7 +25,7 @@
           <el-icon><Search /></el-icon>
         </template>
       </el-input>
-      <el-select v-model="selectedGroup" placeholder="选择分组" clearable filterable style="width: 200px; margin-left: 16px">
+      <el-select v-model="selectedGroup" placeholder="选择分组" clearable style="width: 200px; margin-left: 16px">
         <el-option
           v-for="group in groups"
           :key="group.id"
@@ -144,7 +144,6 @@
               v-model="formData.groupId"
               placeholder="选择分组"
               clearable
-              filterable
               style="flex: 1"
             >
               <el-option

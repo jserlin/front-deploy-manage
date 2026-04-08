@@ -9,7 +9,7 @@
     </div>
 
     <div class="filter-bar">
-      <el-select v-model="selectedEnv" placeholder="环境筛选" clearable filterable style="width: 150px">
+      <el-select v-model="selectedEnv" placeholder="环境筛选" clearable style="width: 150px">
         <el-option label="开发" value="dev" />
         <el-option label="测试" value="test" />
         <el-option label="生产" value="prod" />
@@ -107,7 +107,7 @@
         </template>
 
         <el-form-item label="环境" prop="environment">
-          <el-select v-model="formData.environment" placeholder="选择环境" filterable>
+          <el-select v-model="formData.environment" placeholder="选择环境">
             <el-option label="开发" value="dev" />
             <el-option label="测试" value="test" />
             <el-option label="生产" value="prod" />

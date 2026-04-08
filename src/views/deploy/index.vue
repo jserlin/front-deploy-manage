@@ -10,7 +10,6 @@
           <el-select
             v-model="deployConfig.projectId"
             placeholder="请选择项目"
-            filterable
             @change="handleProjectChange"
             style="width: 100%"
           >
@@ -27,7 +26,6 @@
           <el-select
             v-model="deployConfig.branch"
             placeholder="请选择分支"
-            filterable
             style="width: 100%"
           >
             <el-option
@@ -53,7 +51,6 @@
             <el-select
               v-model="deployConfig.svnCredentialId"
               placeholder="请选择 SVN 凭证"
-              filterable
               style="width: 100%"
             >
               <el-option
@@ -88,7 +85,6 @@
             <el-select
               v-model="deployConfig.serverCredentialId"
               placeholder="请选择服务器凭证"
-              filterable
               style="width: 100%"
             >
               <el-option
