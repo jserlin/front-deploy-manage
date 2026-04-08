@@ -970,7 +970,12 @@ export function registerIpcHandlers(database: DatabaseManager) {
     try {
       const fs = await import('fs')
       const path = await import('path')
-      const docPath = path.join(process.cwd(), 'doc', fileName)
+      const app = await import('electron').then(m => m.app)
+      const isPackaged = app.isPackaged
+      const docBase = isPackaged
+        ? path.join(process.resourcesPath, 'doc')
+        : path.join(process.cwd(), 'doc')
+      const docPath = path.join(docBase, fileName)
       const content = fs.readFileSync(docPath, 'utf-8')
       return { success: true, data: content }
     } catch (error: any) {
