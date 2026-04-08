@@ -5,18 +5,35 @@
   "directories": {
     "output": "release"
   },
+  "npmRebuild": false,
   "publish": null,
   "files": [
     "dist/**/*",
-    "dist-electron/**/*"
+    "dist-electron/**/*",
+    "doc/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "doc",
+      "to": "doc"
+    }
   ],
   "win": {
+    "icon": "build/icon.ico",
     "target": [
       {
         "target": "nsis",
         "arch": ["x64"]
       }
-    ]
+    ],
+    "sign": null
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "installerLanguages": ["zh_CN"],
+    "language": 2052,
+    "shortcutName": "Frontend Deploy Manager"
   },
   "mac": {
     "target": ["dmg"]
