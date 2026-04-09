@@ -36,7 +36,8 @@
     "shortcutName": "Frontend Deploy Manager"
   },
   "mac": {
-    "target": ["dmg"]
+    "target": ["dmg"],
+    "identity": null
   },
   "linux": {
     "target": ["AppImage"]
