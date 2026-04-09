@@ -36,8 +36,33 @@
     "shortcutName": "Frontend Deploy Manager"
   },
   "mac": {
-    "target": ["dmg"],
-    "identity": null
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["x64", "arm64"]
+      }
+    ],
+    "identity": null,
+    "hardenedRuntime": false,
+    "gatekeeperAssess": false,
+    "entitlements": null,
+    "entitlementsInherit": null
+  },
+  "dmg": {
+    "sign": false,
+    "contents": [
+      {
+        "x": 410,
+        "y": 150,
+        "type": "link",
+        "path": "/Applications"
+      },
+      {
+        "x": 130,
+        "y": 150,
+        "type": "file"
+      }
+    ]
   },
   "linux": {
     "target": ["AppImage"]
