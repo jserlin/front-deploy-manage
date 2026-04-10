@@ -1,10 +1,13 @@
-import { exec, ChildProcess } from 'child_process'
-import { promisify } from 'util'
-import { logger } from '../utils/logger'
+import * as fs from 'fs-extra'
+import * as os from 'os'
+
+import { ChildProcess, exec } from 'child_process'
+
 import { CryptoUtil } from '../utils/crypto'
+import { logger } from '../utils/logger'
+import { promisify } from 'util'
 
 const execAsync = promisify(exec)
-const fs = require('fs-extra')
 
 export interface SvnCredential {
   id: number
@@ -50,7 +53,10 @@ export class SVNService {
         if (this.aborted) {
           reject(new Error('发布已取消'))
         } else if (err) {
-          reject(err)
+          const parts = [err.message]
+          if (stdout && stdout.trim()) parts.push(stdout.trim())
+          if (stderr && stderr.trim()) parts.push(stderr.trim())
+          reject(new Error(parts.join('\n')))
         } else {
           resolve({ stdout, stderr })
         }
@@ -89,25 +95,12 @@ export class SVNService {
     }
   }
 
-  private getParentPath(url: string): string {
-    const parts = url.split('/')
-    parts.pop()
-    return parts.join('/')
-  }
-
-  private getDirName(url: string): string {
-    const parts = url.split('/')
-    return parts.pop() || ''
-  }
-
   private async ensureSvnDirectoryExists(
     credential: SvnCredential,
-    svnPath: string,
     fullSvnUrl: string
   ): Promise<void> {
+    const password = credential.password ? CryptoUtil.decrypt(credential.password) : ''
     try {
-      const password = credential.password ? CryptoUtil.decrypt(credential.password) : ''
-      
       const testCommand = `svn info --username "${credential.username}" --password "${password}" --non-interactive "${fullSvnUrl}"`
       await this.execCommand(testCommand, { timeout: 10000 })
       return
@@ -115,36 +108,12 @@ export class SVNService {
       logger.info(`SVN directory does not exist, attempting to create: ${fullSvnUrl}`)
     }
 
-    const password = credential.password ? CryptoUtil.decrypt(credential.password) : ''
-    const parentUrl = this.getParentPath(fullSvnUrl)
-    const dirName = this.getDirName(fullSvnUrl)
-    
-    if (!dirName) {
-      throw new Error(`Cannot create SVN directory: invalid path ${fullSvnUrl}`)
-    }
-
-    const tempParentDir = require('os').tmpdir() + `/svn_parent_${Date.now()}`
-    
+    const mkdirCommand = `svn mkdir --parents --username "${credential.username}" --password "${password}" --non-interactive -m "Create directory for deployment" "${fullSvnUrl}"`
     try {
-      const checkoutParentCmd = `svn checkout --depth empty --username "${credential.username}" --password "${password}" --non-interactive "${parentUrl}" "${tempParentDir}"`
-      await this.execCommand(checkoutParentCmd, { timeout: 30000 })
-    } catch (error: any) {
-      throw new Error(`Failed to checkout parent directory: ${parentUrl}. Error: ${error.message}`)
-    }
-
-    try {
-      const newDirPath = tempParentDir + '/' + dirName
-      await fs.ensureDir(newDirPath)
-      
-      const addCommand = `svn add "${newDirPath}"`
-      await this.execCommand(addCommand, { timeout: 10000 })
-      
-      const commitCommand = `svn commit --username "${credential.username}" --password "${password}" --non-interactive -m "Create directory for deployment" "${newDirPath}"`
-      await this.execCommand(commitCommand, { timeout: 30000 })
-      
+      await this.execCommand(mkdirCommand, { timeout: 30000 })
       logger.info(`SVN directory created: ${fullSvnUrl}`)
-    } finally {
-      await fs.remove(tempParentDir).catch(() => {})
+    } catch (error: any) {
+      throw new Error(`Failed to create SVN directory: ${fullSvnUrl}. Error: ${error.message}`)
     }
   }
 
@@ -154,44 +123,34 @@ export class SVNService {
     svnPath: string,
     commitMessage: string
   ): Promise<void> {
+    const tempDir = `${localPath}_svn_temp`
     try {
       this.checkAborted()
       const password = credential.password ? CryptoUtil.decrypt(credential.password) : ''
-      
       const fullSvnUrl = this.buildSvnUrl(credential.svnUrl, svnPath)
-      const tempDir = `${localPath}_svn_temp`
       
-      await this.ensureSvnDirectoryExists(credential, svnPath, fullSvnUrl)
+      await fs.remove(tempDir).catch(() => {})
+      
+      await this.ensureSvnDirectoryExists(credential, fullSvnUrl)
       
       const checkoutCommand = `svn checkout --username "${credential.username}" --password "${password}" --non-interactive "${fullSvnUrl}" "${tempDir}"`
-      
-      try {
-        await this.execCommand(checkoutCommand, { timeout: 30000 })
-      } catch (error: any) {
-        if (error.message === '发布已取消') throw error
-        if (error.message.includes('already')) {
-          const updateCommand = `svn update --username "${credential.username}" --password "${password}" --non-interactive "${tempDir}"`
-          await this.execCommand(updateCommand, { timeout: 30000 })
-        } else {
-          throw error
-        }
-      }
+      await this.execCommand(checkoutCommand, { timeout: 60000, maxBuffer: 10 * 1024 * 1024 })
 
       this.checkAborted()
       await fs.copy(localPath, tempDir, { overwrite: true })
 
-      const addCommand = `svn add --force "${tempDir}" --auto-props --parents --depth infinity`
-      await this.execCommand(addCommand, { timeout: 30000 })
+      const addCommand = `svn add --force "${tempDir}" --auto-props --parents --depth infinity -q`
+      await this.execCommand(addCommand, { timeout: 60000, maxBuffer: 10 * 1024 * 1024 })
 
-      const commitCommand = `svn commit --username "${credential.username}" --password "${password}" --non-interactive -m "${commitMessage}" "${tempDir}"`
-      await this.execCommand(commitCommand, { timeout: 60000 })
-
-      await fs.remove(tempDir)
+      const commitCommand = `svn commit --username "${credential.username}" --password "${password}" --non-interactive -m "${commitMessage}" "${tempDir}" -q`
+      await this.execCommand(commitCommand, { timeout: 300000, maxBuffer: 10 * 1024 * 1024 })
 
       logger.info('SVN upload completed successfully')
     } catch (error: any) {
       logger.error('SVN upload failed:', error)
       throw new Error(`SVN upload failed: ${error.message}`)
+    } finally {
+      await fs.remove(tempDir).catch(() => {})
     }
   }
 
