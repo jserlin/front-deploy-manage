@@ -1,7 +1,7 @@
 <template>
   <el-config-provider :locale="zhCn">
     <div class="app-container">
-      <el-container v-if="!isLoginPage">
+      <el-container v-if="!isLoginPage" class="layout-container">
         <!-- 侧边栏 -->
         <el-aside width="200px" class="sidebar">
           <div class="logo">
@@ -113,6 +113,10 @@ body {
   overflow: hidden;
 }
 
+.layout-container {
+  height: 100%;
+}
+
 .sidebar {
   overflow-y: auto;
 }
@@ -136,7 +140,7 @@ body {
 .main-content {
   background: #f0f2f5;
   padding: 20px;
-  overflow-y: auto;
+  overflow-y: scroll;
   min-height: 100vh;
 }
 </style>

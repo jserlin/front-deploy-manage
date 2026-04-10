@@ -595,7 +595,6 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .projects-page {
-  height: 100%;
 }
 
 .page-header {

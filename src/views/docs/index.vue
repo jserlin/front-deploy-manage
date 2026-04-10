@@ -103,7 +103,7 @@ watch(() => route.query.doc, (newDoc) => {
 
 <style scoped lang="scss">
 .docs-page {
-  height: calc(100vh - 40px);
+  height: 100%;
   display: flex;
   flex-direction: column;
   
