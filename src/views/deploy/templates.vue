@@ -7,6 +7,7 @@
           v-model="filterProjectId"
           placeholder="全部项目"
           clearable
+          filterable
           style="width: 200px; margin-right: 12px"
         >
           <el-option
@@ -32,10 +33,11 @@
         </template>
       </el-table-column>
       <el-table-column prop="description" label="描述" />
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="280" fixed="right">
         <template #default="{ row }">
           <el-button size="small" @click="useTemplate(row)">使用</el-button>
           <el-button size="small" @click="editTemplate(row)">编辑</el-button>
+          <el-button size="small" type="primary" @click="copyTemplate(row)">复制</el-button>
           <el-button size="small" type="danger" @click="deleteTemplate(row)">删除</el-button>
         </template>
       </el-table-column>
@@ -52,7 +54,7 @@
         </el-form-item>
 
         <el-form-item label="关联项目" prop="projectId">
-          <el-select v-model="formData.projectId" placeholder="请选择项目" style="width: 100%">
+          <el-select v-model="formData.projectId" placeholder="请选择项目" filterable style="width: 100%">
             <el-option
               v-for="project in projects"
               :key="project.id"
@@ -72,7 +74,7 @@
 
         <template v-if="formData.deployType === 'svn' || formData.deployType === 'mixed'">
           <el-form-item label="SVN 凭证">
-            <el-select v-model="formData.svnCredentialId" placeholder="请选择 SVN 凭证" style="width: 100%">
+            <el-select v-model="formData.svnCredentialId" placeholder="请选择 SVN 凭证" filterable style="width: 100%">
               <el-option
                 v-for="cred in svnCredentials"
                 :key="cred.id"
@@ -91,7 +93,7 @@
 
         <template v-if="formData.deployType === 'server' || formData.deployType === 'mixed'">
           <el-form-item label="服务器凭证">
-            <el-select v-model="formData.serverCredentialId" placeholder="请选择服务器凭证" style="width: 100%">
+            <el-select v-model="formData.serverCredentialId" placeholder="请选择服务器凭证" filterable style="width: 100%">
               <el-option
                 v-for="cred in serverCredentials"
                 :key="cred.id"
@@ -247,6 +249,35 @@ const deleteTemplate = async (template: any) => {
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error(error.message || '删除失败')
+    }
+  }
+}
+
+const copyTemplate = async (template: any) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要复制模板 "${template.name}" 吗？`,
+      '确认复制',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'info' }
+    )
+    isEdit.value = false
+    editingId.value = null
+    formData.value = {
+      name: template.name + ' (副本)',
+      projectId: template.projectId,
+      deployType: template.deployType,
+      svnCredentialId: template.svnCredentialId,
+      svnPath: template.svnPath || '',
+      serverCredentialId: template.serverCredentialId,
+      remotePath: template.remotePath || '',
+      commitMessage: '',
+      backupEnabled: template.backupEnabled === true || template.backupEnabled === 1,
+      description: template.description || ''
+    }
+    dialogVisible.value = true
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '操作失败')
     }
   }
 }
