@@ -89,6 +89,9 @@
           <el-form-item label="提交信息">
             <el-input v-model="formData.commitMessage" type="textarea" :rows="3" placeholder="SVN 提交信息" />
           </el-form-item>
+          <el-form-item label="权限SVN路径">
+            <el-input v-model="formData.permissionSvnPath" placeholder="权限文件上传的 SVN 目标路径（留空则使用 SVN 路径）" />
+          </el-form-item>
         </template>
 
         <template v-if="formData.deployType === 'server' || formData.deployType === 'mixed'">
@@ -162,6 +165,7 @@ const formData = ref({
   remotePath: '',
   commitMessage: '',
   backupEnabled: true,
+  permissionSvnPath: '',
   description: ''
 })
 
@@ -223,6 +227,7 @@ const editTemplate = (template: any) => {
     remotePath: template.remotePath || '',
     commitMessage: '',
     backupEnabled: template.backupEnabled === true || template.backupEnabled === 1,
+    permissionSvnPath: template.permissionSvnPath || '',
     description: template.description || ''
   }
   dialogVisible.value = true
@@ -272,6 +277,7 @@ const copyTemplate = async (template: any) => {
       remotePath: template.remotePath || '',
       commitMessage: '',
       backupEnabled: template.backupEnabled === true || template.backupEnabled === 1,
+      permissionSvnPath: template.permissionSvnPath || '',
       description: template.description || ''
     }
     dialogVisible.value = true
@@ -316,6 +322,7 @@ const resetForm = () => {
     remotePath: '',
     commitMessage: '',
     backupEnabled: true,
+    permissionSvnPath: '',
     description: ''
   }
 }

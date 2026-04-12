@@ -11,6 +11,8 @@ export interface Project {
   groupColor?: string
   description?: string
   nodeVersion?: string
+  permissionFilePath?: string
+  svnPermissionAlias?: string
   createdAt: string
   updatedAt: string
 }

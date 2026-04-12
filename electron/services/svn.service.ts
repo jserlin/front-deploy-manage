@@ -1,5 +1,6 @@
 import * as fs from 'fs-extra'
 import * as os from 'os'
+import * as path from 'path'
 
 import { ChildProcess, exec } from 'child_process'
 
@@ -183,6 +184,45 @@ export class SVNService {
     } catch (error: any) {
       logger.error('SVN backup failed:', error)
       throw new Error(`SVN backup failed: ${error.message}`)
+    }
+  }
+
+  async uploadFile(
+    credential: SvnCredential,
+    localFilePath: string,
+    svnPath: string,
+    targetFileName: string,
+    commitMessage: string
+  ): Promise<void> {
+    const tempDir = `${localFilePath}_svn_file_temp_${Date.now()}`
+    try {
+      this.checkAborted()
+      const password = credential.password ? CryptoUtil.decrypt(credential.password) : ''
+      const fullSvnUrl = this.buildSvnUrl(credential.svnUrl, svnPath)
+
+      await fs.remove(tempDir).catch(() => {})
+
+      await this.ensureSvnDirectoryExists(credential, fullSvnUrl)
+
+      const checkoutCommand = `svn checkout --username "${credential.username}" --password "${password}" --non-interactive "${fullSvnUrl}" "${tempDir}"`
+      await this.execCommand(checkoutCommand, { timeout: 60000, maxBuffer: 10 * 1024 * 1024 })
+
+      this.checkAborted()
+      const destPath = path.join(tempDir, targetFileName)
+      await fs.copy(localFilePath, destPath, { overwrite: true })
+
+      const addCommand = `svn add --force "${tempDir}" --auto-props --parents --depth infinity -q`
+      await this.execCommand(addCommand, { timeout: 60000, maxBuffer: 10 * 1024 * 1024 })
+
+      const commitCommand = `svn commit --username "${credential.username}" --password "${password}" --non-interactive -m "${commitMessage}" "${tempDir}" -q`
+      await this.execCommand(commitCommand, { timeout: 300000, maxBuffer: 10 * 1024 * 1024 })
+
+      logger.info(`SVN file upload completed: ${targetFileName}`)
+    } catch (error: any) {
+      logger.error('SVN file upload failed:', error)
+      throw new Error(`SVN file upload failed: ${error.message}`)
+    } finally {
+      await fs.remove(tempDir).catch(() => {})
     }
   }
 

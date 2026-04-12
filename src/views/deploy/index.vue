@@ -80,6 +80,20 @@
               placeholder="SVN 提交信息"
             />
           </el-form-item>
+
+          <el-form-item label="同步权限文件">
+            <el-switch v-model="deployConfig.syncPermissionFile" />
+            <span style="margin-left: 8px; font-size: 12px; color: #909399;" v-if="!currentProjectPermissionFile && deployConfig.syncPermissionFile">
+              当前项目未配置权限文件，请在项目设置中配置
+            </span>
+          </el-form-item>
+
+          <el-form-item label="权限SVN路径" v-if="deployConfig.syncPermissionFile">
+            <el-input
+              v-model="deployConfig.permissionSvnPath"
+              placeholder="权限文件上传的 SVN 目标路径（留空则使用 SVN 路径）"
+            />
+          </el-form-item>
         </template>
 
         <!-- 服务器发布配置 -->
@@ -222,7 +236,9 @@ const deployConfig = ref({
   svnPath: '',
   commitMessage: '自动部署 - ' + new Date().toLocaleString(),
   backupEnabled: true,
-  needBuild: true
+  needBuild: true,
+  syncPermissionFile: false,
+  permissionSvnPath: ''
 })
 
 const deployProgress = ref<any>({
@@ -250,6 +266,12 @@ const canDeploy = computed(() => {
   }
   
   return false
+})
+
+const currentProjectPermissionFile = computed(() => {
+  if (!deployConfig.value.projectId) return ''
+  const project = projects.value.find(p => p.id === deployConfig.value.projectId)
+  return project?.permissionFilePath || ''
 })
 
 const handleProjectChange = async () => {
@@ -340,7 +362,9 @@ const startDeploy = async () => {
         commitMessage: deployConfig.value.commitMessage,
         backupEnabled: deployConfig.value.backupEnabled,
         needBuild: deployConfig.value.needBuild,
-        branch: deployConfig.value.branch
+        branch: deployConfig.value.branch,
+        syncPermissionFile: deployConfig.value.syncPermissionFile,
+        permissionSvnPath: deployConfig.value.permissionSvnPath
       })
     } else if (deployConfig.value.deployType === 'server') {
       const serverCred = serverCredentials.value.find(c => c.id === deployConfig.value.serverCredentialId)
@@ -360,6 +384,8 @@ const startDeploy = async () => {
         project: plainProject,
         branch: deployConfig.value.branch,
         needBuild: deployConfig.value.needBuild,
+        syncPermissionFile: deployConfig.value.syncPermissionFile,
+        permissionSvnPath: deployConfig.value.permissionSvnPath,
         targets: [
           {
             type: 'svn',
@@ -465,6 +491,7 @@ const applyTemplate = async () => {
 
     if (tpl.svnCredentialId) deployConfig.value.svnCredentialId = tpl.svnCredentialId
     if (tpl.svnPath) deployConfig.value.svnPath = tpl.svnPath
+    if (tpl.permissionSvnPath) deployConfig.value.permissionSvnPath = tpl.permissionSvnPath
     if (tpl.serverCredentialId) deployConfig.value.serverCredentialId = tpl.serverCredentialId
     if (tpl.remotePath) deployConfig.value.remotePath = tpl.remotePath
 

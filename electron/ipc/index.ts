@@ -40,6 +40,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
           groupColor: group ? group.color : '',
           description: p.description || '',
           nodeVersion: p.node_version || '',
+          permissionFilePath: p.permission_file_path || '',
+          svnPermissionAlias: p.svn_permission_alias || '',
           createdAt: p.created_at,
           updatedAt: p.updated_at
         }
@@ -70,6 +72,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
         groupColor: group ? group.color : '',
         description: p.description || '',
         nodeVersion: p.node_version || '',
+        permissionFilePath: p.permission_file_path || '',
+        svnPermissionAlias: p.svn_permission_alias || '',
         createdAt: p.created_at,
         updatedAt: p.updated_at
       }
@@ -83,12 +87,13 @@ export function registerIpcHandlers(database: DatabaseManager) {
     try {
       console.log('[IPC] project:create - data:', JSON.stringify(data))
       const result = db.run(`
-        INSERT INTO projects (name, local_path, git_repo, git_branch, build_command, output_dir, group_id, description, node_version)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO projects (name, local_path, git_repo, git_branch, build_command, output_dir, group_id, description, node_version, permission_file_path, svn_permission_alias)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         data.name, data.localPath, data.gitRepo || null, data.gitBranch || 'main',
         data.buildCommand || 'npm run build', data.outputDir || 'dist',
-        data.groupId || null, data.description || null, data.nodeVersion || null
+        data.groupId || null, data.description || null, data.nodeVersion || null,
+        data.permissionFilePath || null, data.svnPermissionAlias || null
       ])
       return { success: true, data: { id: result.lastInsertRowid } }
     } catch (error: any) {
@@ -101,12 +106,13 @@ export function registerIpcHandlers(database: DatabaseManager) {
     try {
       db.run(`
         UPDATE projects
-        SET name=?, local_path=?, git_repo=?, git_branch=?, build_command=?, output_dir=?, group_id=?, description=?, node_version=?, updated_at=CURRENT_TIMESTAMP
+        SET name=?, local_path=?, git_repo=?, git_branch=?, build_command=?, output_dir=?, group_id=?, description=?, node_version=?, permission_file_path=?, svn_permission_alias=?, updated_at=CURRENT_TIMESTAMP
         WHERE id=?
       `, [
         data.name, data.localPath, data.gitRepo || null, data.gitBranch || 'main',
         data.buildCommand || 'npm run build', data.outputDir || 'dist',
-        data.groupId || null, data.description || null, data.nodeVersion || null, id
+        data.groupId || null, data.description || null, data.nodeVersion || null,
+        data.permissionFilePath || null, data.svnPermissionAlias || null, id
       ])
       return { success: true }
     } catch (error: any) {
@@ -448,7 +454,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
       event.sender.send('deploy:progress', { stage: 'building', log: msg })
     }
     try {
-      const { project, svnPath, commitMessage, backupEnabled, needBuild = true, branch } = config
+      const { project, svnPath, commitMessage, backupEnabled, needBuild = true, branch, syncPermissionFile = false, permissionSvnPath = '' } = config
       const svnCredential = config.svnCredential
       if (svnCredential && svnCredential.id) {
         const c = db.get('SELECT * FROM svn_credentials WHERE id=?', [svnCredential.id]) as any
@@ -489,6 +495,18 @@ export function registerIpcHandlers(database: DatabaseManager) {
       const outputPath = path.join(project.localPath, project.outputDir)
       await svnService.uploadDirectory(svnCredential, outputPath, svnPath, commitMessage)
       log('SVN 上传完成')
+
+      if (syncPermissionFile && project.permissionFilePath) {
+        const srcFile = path.basename(project.permissionFilePath)
+        const targetName = project.svnPermissionAlias || srcFile
+        const permSvnPath = permissionSvnPath || svnPath
+        log(`同步权限文件: ${srcFile}${targetName !== srcFile ? ' → ' + targetName : ''}`)
+        await svnService.uploadFile(svnCredential, project.permissionFilePath, permSvnPath, targetName, commitMessage)
+        log('权限文件同步完成')
+      } else if (syncPermissionFile && !project.permissionFilePath) {
+        log('同步权限文件: 项目未配置权限文件路径，跳过')
+      }
+
       const commit = await gitService.getCurrentCommit(project.localPath)
       const now = new Date().toLocaleString('sv-SE')
       const historyLog = logs.join('\n')
@@ -600,7 +618,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
       event.sender.send('deploy:progress', { stage: 'building', log: msg })
     }
     try {
-      const { project, targets, branch, needBuild = true } = config
+      const { project, targets, branch, needBuild = true, syncPermissionFile = false, permissionSvnPath = '' } = config
       log('加载凭证信息...')
       for (const target of targets) {
         if (target.type === 'server' && target.credential && target.credential.id) {
@@ -658,6 +676,21 @@ export function registerIpcHandlers(database: DatabaseManager) {
           log('服务器上传完成')
         }
       }
+
+      if (syncPermissionFile && project.permissionFilePath) {
+        const svnTarget = targets.find((t: any) => t.type === 'svn')
+        if (svnTarget) {
+          const srcFile = path.basename(project.permissionFilePath)
+          const targetName = project.svnPermissionAlias || srcFile
+          const permSvnPath = permissionSvnPath || svnTarget.svnPath
+          log(`同步权限文件: ${srcFile}${targetName !== srcFile ? ' → ' + targetName : ''}`)
+          await svnService.uploadFile(svnTarget.credential, project.permissionFilePath, permSvnPath, targetName, svnTarget.commitMessage)
+          log('权限文件同步完成')
+        }
+      } else if (syncPermissionFile && !project.permissionFilePath) {
+        log('同步权限文件: 项目未配置权限文件路径，跳过')
+      }
+
       const commit = await gitService.getCurrentCommit(project.localPath)
       const now = new Date().toLocaleString('sv-SE')
       const historyLog = logs.join('\n')
@@ -764,6 +797,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
         backupEnabled: t.backup_enabled === 1,
         preCommand: t.pre_command || '',
         postCommand: t.post_command || '',
+        permissionSvnPath: t.permission_svn_path || '',
         description: t.description || '',
         createdAt: t.created_at,
         updatedAt: t.updated_at
@@ -794,6 +828,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
         backupEnabled: t.backup_enabled === 1,
         preCommand: t.pre_command || '',
         postCommand: t.post_command || '',
+        permissionSvnPath: t.permission_svn_path || '',
         description: t.description || '',
         createdAt: t.created_at,
         updatedAt: t.updated_at
@@ -807,11 +842,11 @@ export function registerIpcHandlers(database: DatabaseManager) {
   ipcMain.handle('template:create', async (event, data) => {
     try {
       const result = db.run(`
-        INSERT INTO deploy_templates (name, project_id, deploy_type, server_credential_id, svn_credential_id, remote_path, svn_path, backup_enabled, pre_command, post_command)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO deploy_templates (name, project_id, deploy_type, server_credential_id, svn_credential_id, remote_path, svn_path, backup_enabled, pre_command, post_command, permission_svn_path)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         data.name, data.projectId, data.deployType, data.serverCredentialId, data.svnCredentialId,
-        data.remotePath, data.svnPath, data.backupEnabled ? 1 : 0, data.preCommand, data.postCommand
+        data.remotePath, data.svnPath, data.backupEnabled ? 1 : 0, data.preCommand, data.postCommand, data.permissionSvnPath
       ])
       return { success: true, data: { id: result.lastInsertRowid } }
     } catch (error: any) {
@@ -822,11 +857,11 @@ export function registerIpcHandlers(database: DatabaseManager) {
   ipcMain.handle('template:update', async (event, id: number, data) => {
     try {
       db.run(`
-        UPDATE deploy_templates SET name=?, project_id=?, deploy_type=?, server_credential_id=?, svn_credential_id=?, remote_path=?, svn_path=?, backup_enabled=?, pre_command=?, post_command=?
+        UPDATE deploy_templates SET name=?, project_id=?, deploy_type=?, server_credential_id=?, svn_credential_id=?, remote_path=?, svn_path=?, backup_enabled=?, pre_command=?, post_command=?, permission_svn_path=?
         WHERE id=?
       `, [
         data.name, data.projectId, data.deployType, data.serverCredentialId, data.svnCredentialId,
-        data.remotePath, data.svnPath, data.backupEnabled ? 1 : 0, data.preCommand, data.postCommand, id
+        data.remotePath, data.svnPath, data.backupEnabled ? 1 : 0, data.preCommand, data.postCommand, data.permissionSvnPath, id
       ])
       return { success: true }
     } catch (error: any) {
@@ -882,8 +917,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
         try { db.run('INSERT OR REPLACE INTO groups (id, name, color, sort_order) VALUES (?, ?, ?, ?)', [group.id, group.name, group.color, group.sort_order]) } catch (e) { /* skip */ }
       }
       for (const project of config.projects || []) {
-        try { db.run('INSERT OR REPLACE INTO projects (id, name, local_path, git_repo, git_branch, build_command, output_dir, group_id, description) VALUES (?,?,?,?,?,?,?,?,?)',
-          [project.id, project.name, project.local_path, project.git_repo, project.git_branch, project.build_command, project.output_dir, project.group_id, project.description]) } catch (e) { /* skip */ }
+        try { db.run('INSERT OR REPLACE INTO projects (id, name, local_path, git_repo, git_branch, build_command, output_dir, group_id, description, permission_file_path, svn_permission_alias) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+          [project.id, project.name, project.local_path, project.git_repo, project.git_branch, project.build_command, project.output_dir, project.group_id, project.description, project.permission_file_path, project.svn_permission_alias]) } catch (e) { /* skip */ }
       }
       for (const cred of config.serverCredentials || []) {
         try { db.run('INSERT OR REPLACE INTO server_credentials (id, name, host, port, username, auth_type, password, private_key, passphrase, environment, description) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
@@ -908,6 +943,22 @@ export function registerIpcHandlers(database: DatabaseManager) {
       const result = await dialog.showOpenDialog({
         title: '选择项目目录',
         properties: ['openDirectory']
+      })
+      if (result.filePaths && result.filePaths.length > 0) {
+        return { success: true, path: result.filePaths[0] }
+      }
+      return { success: false }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('config:selectSingleFile', async () => {
+    try {
+      const result = await dialog.showOpenDialog({
+        title: '选择权限文件',
+        properties: ['openFile'],
+        filters: [{ name: '所有文件', extensions: ['*'] }]
       })
       if (result.filePaths && result.filePaths.length > 0) {
         return { success: true, path: result.filePaths[0] }

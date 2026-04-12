@@ -172,6 +172,23 @@
             placeholder="项目描述"
           />
         </el-form-item>
+
+        <el-divider content-position="left">权限文件配置</el-divider>
+
+        <el-form-item label="权限文件">
+          <el-input v-model="formData.permissionFilePath" placeholder="选择本地权限文件（可选）">
+            <template #append>
+              <el-button @click="selectPermissionFile">选择</el-button>
+            </template>
+          </el-input>
+        </el-form-item>
+
+        <el-form-item label="SVN 别名">
+          <el-input v-model="formData.svnPermissionAlias" placeholder="上传到 SVN 时的文件名，不填则保留原名" />
+          <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+            如果配置了别名，上传到 SVN 指定文件夹下时会变更为此文件名，未配置则使用原文件名
+          </div>
+        </el-form-item>
       </el-form>
 
       <template #footer>
@@ -300,7 +317,9 @@ const formData = ref({
   outputDir: 'dist',
   groupId: null as number | null,
   description: '',
-  nodeVersion: ''
+  nodeVersion: '',
+  permissionFilePath: '',
+  svnPermissionAlias: ''
 })
 
 const rules = {
@@ -381,7 +400,9 @@ const editProject = (project: Project) => {
     outputDir: project.outputDir || 'dist',
     groupId: project.groupId || null,
     description: project.description || '',
-    nodeVersion: project.nodeVersion || ''
+    nodeVersion: project.nodeVersion || '',
+    permissionFilePath: project.permissionFilePath || '',
+    svnPermissionAlias: project.svnPermissionAlias || ''
   }
   dialogVisible.value = true
 }
@@ -433,6 +454,17 @@ const selectPath = async () => {
   }
 }
 
+const selectPermissionFile = async () => {
+  try {
+    const result = await window.electronAPI.config.selectSingleFile()
+    if (result && result.success && result.path) {
+      formData.value.permissionFilePath = result.path
+    }
+  } catch (error) {
+    console.error('selectPermissionFile error:', error)
+  }
+}
+
 const submitForm = async () => {
   try {
     await formRef.value.validate()
@@ -464,7 +496,9 @@ const resetForm = () => {
     outputDir: 'dist',
     groupId: null,
     description: '',
-    nodeVersion: ''
+    nodeVersion: '',
+    permissionFilePath: '',
+    svnPermissionAlias: ''
   }
 }
 
