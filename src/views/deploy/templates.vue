@@ -25,14 +25,13 @@
     </div>
 
     <el-table :data="filteredList" v-loading="loading" border stripe>
-      <el-table-column prop="name" label="模板名称" width="180" />
-      <el-table-column prop="projectName" label="项目" width="150" />
+      <el-table-column prop="name" label="模板名称" min-width="180" />
+      <el-table-column prop="projectName" label="项目" min-width="150" />
       <el-table-column prop="deployType" label="发布类型" width="120">
         <template #default="{ row }">
           <el-tag>{{ getDeployTypeLabel(row.deployType) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="描述" />
       <el-table-column label="操作" width="280" fixed="right">
         <template #default="{ row }">
           <el-button size="small" @click="useTemplate(row)">使用</el-button>
@@ -112,10 +111,6 @@
 
         <el-form-item label="备份旧版本">
           <el-switch v-model="formData.backupEnabled" />
-        </el-form-item>
-
-        <el-form-item label="描述">
-          <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="模板描述" />
         </el-form-item>
       </el-form>
 

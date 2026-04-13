@@ -186,7 +186,7 @@
         <el-form-item label="SVN 别名">
           <el-input v-model="formData.svnPermissionAlias" placeholder="上传到 SVN 时的文件名，不填则保留原名" />
           <div style="font-size: 12px; color: #909399; margin-top: 4px;">
-            如果配置了别名，上传到 SVN 指定文件夹下时会变更为此文件名，未配置则使用原文件名
+            配置了别名，上传到 SVN 指定文件夹下时会变更为此文件名，未配置则使用原文件名
           </div>
         </el-form-item>
       </el-form>
