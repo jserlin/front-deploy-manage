@@ -33,7 +33,7 @@ export class NodeVersionService {
   }
 
   async isVersionInstalled(version: string): Promise<boolean> {
-    const normalized = version.startsWith('v') ? version : `v${version}`
+    const normalized = this.normalizeVersion(version)
     const nvmHome = getNvmHome()
     if (nvmHome && existsSync(join(nvmHome, normalized))) {
       return true
@@ -42,7 +42,7 @@ export class NodeVersionService {
   }
 
   getNodeVersionPath(version: string): string | null {
-    const normalized = version.startsWith('v') ? version : `v${version}`
+    const normalized = this.normalizeVersion(version)
     const nvmHome = getNvmHome()
     if (!nvmHome) return null
     const versionDir = join(nvmHome, normalized)
@@ -63,8 +63,13 @@ export class NodeVersionService {
     }
   }
 
+  private normalizeVersion(version: string): string {
+    const trimmed = version.trim()
+    return trimmed.startsWith('v') ? trimmed : `v${trimmed}`
+  }
+
   async checkVersion(expectedVersion: string): Promise<NodeCheckResult> {
-    if (!expectedVersion) {
+    if (!expectedVersion || !expectedVersion.trim()) {
       return {
         needSwitch: false,
         currentVersion: '',
@@ -75,7 +80,7 @@ export class NodeVersionService {
       }
     }
 
-    const normalized = expectedVersion.startsWith('v') ? expectedVersion : `v${expectedVersion}`
+    const normalized = this.normalizeVersion(expectedVersion)
 
     try {
       const currentVersion = await this.getCurrentVersion()
@@ -128,7 +133,7 @@ export class NodeVersionService {
   }
 
   async switchVersion(version: string): Promise<void> {
-    const normalized = version.startsWith('v') ? version : `v${version}`
+    const normalized = this.normalizeVersion(version)
     const nodePath = this.getNodeVersionPath(normalized)
     if (!nodePath) {
       throw new Error(`Node ${normalized} 未安装，无法切换`)

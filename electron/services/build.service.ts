@@ -31,16 +31,17 @@ export class BuildService {
       return { ...process.env, NODE_ENV: 'production' }
     }
 
-    const normalized = nodeVersion.startsWith('v') ? nodeVersion : `v${nodeVersion}`
-    const nodeDir = path.join(nvmHome, normalized)
+    const normalized = nodeVersion.trim()
+    const versionPrefix = normalized.startsWith('v') ? normalized : `v${normalized}`
+    const nodeDir = path.join(nvmHome, versionPrefix)
     if (!fs.existsSync(nodeDir)) {
-      logger.warn(`Node ${normalized} directory not found: ${nodeDir}, using default Node`)
+      logger.warn(`Node ${versionPrefix} directory not found: ${nodeDir}, using default Node`)
       return { ...process.env, NODE_ENV: 'production' }
     }
 
     const currentPath = process.env.PATH || ''
     const newPath = `${nodeDir};${currentPath}`
-    logger.info(`Injecting Node ${normalized} into PATH: ${nodeDir}`)
+    logger.info(`Injecting Node ${versionPrefix} into PATH: ${nodeDir}`)
 
     return {
       ...process.env,

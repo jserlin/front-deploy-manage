@@ -92,7 +92,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
       `, [
         data.name, data.localPath, data.gitRepo || null, data.gitBranch || 'main',
         data.buildCommand || 'npm run build', data.outputDir || 'dist',
-        data.groupId || null, data.description || null, data.nodeVersion || null,
+        data.groupId || null, data.description || null, data.nodeVersion ? data.nodeVersion.trim() : null,
         data.permissionFilePath || null, data.svnPermissionAlias || null
       ])
       return { success: true, data: { id: result.lastInsertRowid } }
@@ -111,7 +111,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
       `, [
         data.name, data.localPath, data.gitRepo || null, data.gitBranch || 'main',
         data.buildCommand || 'npm run build', data.outputDir || 'dist',
-        data.groupId || null, data.description || null, data.nodeVersion || null,
+        data.groupId || null, data.description || null, data.nodeVersion ? data.nodeVersion.trim() : null,
         data.permissionFilePath || null, data.svnPermissionAlias || null, id
       ])
       return { success: true }
