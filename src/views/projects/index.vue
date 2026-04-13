@@ -33,9 +33,19 @@
           :value="group.id"
         />
       </el-select>
+      <div class="view-toggle">
+        <el-radio-group v-model="viewMode" size="default">
+          <el-radio-button value="card">
+            <el-icon><Grid /></el-icon>
+          </el-radio-button>
+          <el-radio-button value="table">
+            <el-icon><List /></el-icon>
+          </el-radio-button>
+        </el-radio-group>
+      </div>
     </div>
 
-    <div v-loading="loading" class="project-grid">
+    <div v-if="viewMode === 'card'" v-loading="loading" class="project-grid">
       <el-card
         v-for="project in filteredProjects"
         :key="project.id"
@@ -84,6 +94,46 @@
         </div>
       </el-card>
     </div>
+
+    <el-table
+      v-else
+      v-loading="loading"
+      :data="filteredProjects"
+      border
+      stripe
+      style="width: 100%"
+    >
+      <el-table-column prop="name" label="项目名称" width="180" />
+      <el-table-column prop="localPath" label="本地路径" min-width="200" show-overflow-tooltip />
+      <el-table-column label="分组" width="120">
+        <template #default="{ row }">
+          <el-tag v-if="row.groupName" :color="row.groupColor" size="small" style="color: #fff; border: none;">
+            {{ row.groupName }}
+          </el-tag>
+          <span v-else style="color: #c0c4cc">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="gitBranch" label="分支" width="120">
+        <template #default="{ row }">
+          {{ row.gitBranch || 'main' }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="buildCommand" label="构建命令" width="160" show-overflow-tooltip />
+      <el-table-column prop="outputDir" label="产物目录" width="100" show-overflow-tooltip />
+      <el-table-column label="Node" width="100">
+        <template #default="{ row }">
+          <el-tag v-if="row.nodeVersion" size="small" type="info">{{ row.nodeVersion }}</el-tag>
+          <span v-else style="color: #c0c4cc">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="200" fixed="right">
+        <template #default="{ row }">
+          <el-button size="small" @click="quickDeploy(row)">发布</el-button>
+          <el-button size="small" @click="editProject(row)">编辑</el-button>
+          <el-button size="small" type="danger" @click="deleteProject(row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
 
     <!-- 添加/编辑项目对话框 -->
     <el-dialog
@@ -300,6 +350,7 @@ const projectStore = useProjectStore()
 const loading = ref(false)
 const searchText = ref('')
 const selectedGroup = ref<number | null>(null)
+const viewMode = ref<'card' | 'table'>('card')
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const editingId = ref<number | null>(null)
@@ -652,6 +703,10 @@ onMounted(async () => {
   margin-bottom: 20px;
   display: flex;
   align-items: center;
+
+  .view-toggle {
+    margin-left: auto;
+  }
 }
 
 .project-grid {
