@@ -27,6 +27,12 @@
     <el-table :data="filteredList" v-loading="loading" border stripe>
       <el-table-column prop="name" label="模板名称" min-width="180" />
       <el-table-column prop="projectName" label="项目" min-width="150" />
+      <el-table-column prop="branch" label="分支" width="150">
+        <template #default="{ row }">
+          <span v-if="row.branch">{{ row.branch }}</span>
+          <span v-else style="color: #999">未设置</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="deployType" label="发布类型" width="120">
         <template #default="{ row }">
           <el-tag>{{ getDeployTypeLabel(row.deployType) }}</el-tag>
@@ -53,12 +59,23 @@
         </el-form-item>
 
         <el-form-item label="关联项目" prop="projectId">
-          <el-select v-model="formData.projectId" placeholder="请选择项目" filterable style="width: 100%">
+          <el-select v-model="formData.projectId" placeholder="请选择项目" filterable style="width: 100%" @change="handleProjectChange">
             <el-option
               v-for="project in projects"
               :key="project.id"
               :label="project.name"
               :value="project.id"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="默认分支" v-if="formData.projectId">
+          <el-select v-model="formData.branch" placeholder="请选择分支" filterable clearable style="width: 100%">
+            <el-option
+              v-for="branch in branches"
+              :key="branch"
+              :label="branch"
+              :value="branch"
             />
           </el-select>
         </el-form-item>
@@ -136,6 +153,7 @@ const templates = ref<any[]>([])
 const projects = computed(() => projectStore.projects)
 const serverCredentials = ref<any[]>([])
 const svnCredentials = ref<any[]>([])
+const branches = ref<string[]>([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const editingId = ref<number | null>(null)
@@ -154,6 +172,7 @@ const formData = ref({
   name: '',
   projectId: null as number | null,
   deployType: 'svn' as 'svn' | 'server' | 'mixed',
+  branch: '',
   svnCredentialId: null as number | null,
   svnPath: '',
   serverCredentialId: null as number | null,
@@ -202,6 +221,29 @@ const fetchCredentials = async () => {
   }
 }
 
+const handleProjectChange = async () => {
+  branches.value = []
+  formData.value.branch = ''
+  if (formData.value.projectId) {
+    const project = projects.value.find((p: any) => p.id === formData.value.projectId)
+    if (project) {
+      try {
+        const result = await window.electronAPI.git.getBranches(project.localPath)
+        if (result.success) {
+          branches.value = result.data || []
+          if (project.gitBranch && branches.value.includes(project.gitBranch)) {
+            formData.value.branch = project.gitBranch
+          } else if (branches.value.length > 0) {
+            formData.value.branch = branches.value[0]
+          }
+        }
+      } catch (error) {
+        console.error('Failed to get branches:', error)
+      }
+    }
+  }
+}
+
 const showAddDialog = () => {
   isEdit.value = false
   editingId.value = null
@@ -209,13 +251,14 @@ const showAddDialog = () => {
   dialogVisible.value = true
 }
 
-const editTemplate = (template: any) => {
+const editTemplate = async (template: any) => {
   isEdit.value = true
   editingId.value = template.id
   formData.value = {
     name: template.name,
     projectId: template.projectId,
     deployType: template.deployType,
+    branch: template.branch || '',
     svnCredentialId: template.svnCredentialId,
     svnPath: template.svnPath || '',
     serverCredentialId: template.serverCredentialId,
@@ -226,6 +269,19 @@ const editTemplate = (template: any) => {
     description: template.description || ''
   }
   dialogVisible.value = true
+  if (template.projectId) {
+    const project = projects.value.find((p: any) => p.id === template.projectId)
+    if (project) {
+      try {
+        const result = await window.electronAPI.git.getBranches(project.localPath)
+        if (result.success) {
+          branches.value = result.data || []
+        }
+      } catch (error) {
+        console.error('Failed to get branches:', error)
+      }
+    }
+  }
 }
 
 const useTemplate = (template: any) => {
@@ -266,6 +322,7 @@ const copyTemplate = async (template: any) => {
       name: template.name + ' (副本)',
       projectId: template.projectId,
       deployType: template.deployType,
+      branch: template.branch || '',
       svnCredentialId: template.svnCredentialId,
       svnPath: template.svnPath || '',
       serverCredentialId: template.serverCredentialId,
@@ -276,6 +333,20 @@ const copyTemplate = async (template: any) => {
       description: template.description || ''
     }
     dialogVisible.value = true
+    branches.value = []
+    if (template.projectId) {
+      const project = projects.value.find((p: any) => p.id === template.projectId)
+      if (project) {
+        try {
+          const result = await window.electronAPI.git.getBranches(project.localPath)
+          if (result.success) {
+            branches.value = result.data || []
+          }
+        } catch (error) {
+          console.error('Failed to get branches:', error)
+        }
+      }
+    }
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error(error.message || '操作失败')
@@ -311,6 +382,7 @@ const resetForm = () => {
     name: '',
     projectId: null,
     deployType: 'svn',
+    branch: '',
     svnCredentialId: null,
     svnPath: '',
     serverCredentialId: null,
@@ -320,6 +392,7 @@ const resetForm = () => {
     permissionSvnPath: '',
     description: ''
   }
+  branches.value = []
 }
 
 onMounted(async () => {

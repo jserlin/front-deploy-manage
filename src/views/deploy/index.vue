@@ -484,6 +484,9 @@ const applyTemplate = async () => {
     if (tpl.projectId) {
       deployConfig.value.projectId = tpl.projectId
       await handleProjectChange()
+      if (tpl.branch) {
+        deployConfig.value.branch = tpl.branch
+      }
     }
 
     deployConfig.value.deployType = tpl.deployType || 'svn'

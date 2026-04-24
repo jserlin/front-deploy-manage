@@ -790,6 +790,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
         projectId: t.project_id,
         projectName: projectMap.get(t.project_id) || '',
         deployType: t.deploy_type,
+        branch: t.branch || '',
         serverCredentialId: t.server_credential_id,
         svnCredentialId: t.svn_credential_id,
         remotePath: t.remote_path || '',
@@ -821,6 +822,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
         projectId: t.project_id,
         projectName: projectMap.get(t.project_id) || '',
         deployType: t.deploy_type,
+        branch: t.branch || '',
         serverCredentialId: t.server_credential_id,
         svnCredentialId: t.svn_credential_id,
         remotePath: t.remote_path || '',
@@ -842,10 +844,10 @@ export function registerIpcHandlers(database: DatabaseManager) {
   ipcMain.handle('template:create', async (event, data) => {
     try {
       const result = db.run(`
-        INSERT INTO deploy_templates (name, project_id, deploy_type, server_credential_id, svn_credential_id, remote_path, svn_path, backup_enabled, pre_command, post_command, permission_svn_path)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO deploy_templates (name, project_id, deploy_type, branch, server_credential_id, svn_credential_id, remote_path, svn_path, backup_enabled, pre_command, post_command, permission_svn_path)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
-        data.name, data.projectId, data.deployType, data.serverCredentialId, data.svnCredentialId,
+        data.name, data.projectId, data.deployType, data.branch || '', data.serverCredentialId, data.svnCredentialId,
         data.remotePath, data.svnPath, data.backupEnabled ? 1 : 0, data.preCommand, data.postCommand, data.permissionSvnPath
       ])
       return { success: true, data: { id: result.lastInsertRowid } }
@@ -857,10 +859,10 @@ export function registerIpcHandlers(database: DatabaseManager) {
   ipcMain.handle('template:update', async (event, id: number, data) => {
     try {
       db.run(`
-        UPDATE deploy_templates SET name=?, project_id=?, deploy_type=?, server_credential_id=?, svn_credential_id=?, remote_path=?, svn_path=?, backup_enabled=?, pre_command=?, post_command=?, permission_svn_path=?
+        UPDATE deploy_templates SET name=?, project_id=?, deploy_type=?, branch=?, server_credential_id=?, svn_credential_id=?, remote_path=?, svn_path=?, backup_enabled=?, pre_command=?, post_command=?, permission_svn_path=?
         WHERE id=?
       `, [
-        data.name, data.projectId, data.deployType, data.serverCredentialId, data.svnCredentialId,
+        data.name, data.projectId, data.deployType, data.branch || '', data.serverCredentialId, data.svnCredentialId,
         data.remotePath, data.svnPath, data.backupEnabled ? 1 : 0, data.preCommand, data.postCommand, data.permissionSvnPath, id
       ])
       return { success: true }
