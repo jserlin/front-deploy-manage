@@ -74,6 +74,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
         nodeVersion: p.node_version || '',
         permissionFilePath: p.permission_file_path || '',
         svnPermissionAlias: p.svn_permission_alias || '',
+        repoRootPath: p.repo_root_path || '',
         createdAt: p.created_at,
         updatedAt: p.updated_at
       }
@@ -87,13 +88,13 @@ export function registerIpcHandlers(database: DatabaseManager) {
     try {
       console.log('[IPC] project:create - data:', JSON.stringify(data))
       const result = db.run(`
-        INSERT INTO projects (name, local_path, git_repo, git_branch, build_command, output_dir, group_id, description, node_version, permission_file_path, svn_permission_alias)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO projects (name, local_path, git_repo, git_branch, build_command, output_dir, group_id, description, node_version, permission_file_path, svn_permission_alias, repo_root_path)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         data.name, data.localPath, data.gitRepo || null, data.gitBranch || 'main',
         data.buildCommand || 'npm run build', data.outputDir || 'dist',
         data.groupId || null, data.description || null, data.nodeVersion ? data.nodeVersion.trim() : null,
-        data.permissionFilePath || null, data.svnPermissionAlias || null
+        data.permissionFilePath || null, data.svnPermissionAlias || null, data.repoRootPath || null
       ])
       return { success: true, data: { id: result.lastInsertRowid } }
     } catch (error: any) {
@@ -106,13 +107,13 @@ export function registerIpcHandlers(database: DatabaseManager) {
     try {
       db.run(`
         UPDATE projects
-        SET name=?, local_path=?, git_repo=?, git_branch=?, build_command=?, output_dir=?, group_id=?, description=?, node_version=?, permission_file_path=?, svn_permission_alias=?, updated_at=CURRENT_TIMESTAMP
+        SET name=?, local_path=?, git_repo=?, git_branch=?, build_command=?, output_dir=?, group_id=?, description=?, node_version=?, permission_file_path=?, svn_permission_alias=?, repo_root_path=?, updated_at=CURRENT_TIMESTAMP
         WHERE id=?
       `, [
         data.name, data.localPath, data.gitRepo || null, data.gitBranch || 'main',
         data.buildCommand || 'npm run build', data.outputDir || 'dist',
         data.groupId || null, data.description || null, data.nodeVersion ? data.nodeVersion.trim() : null,
-        data.permissionFilePath || null, data.svnPermissionAlias || null, id
+        data.permissionFilePath || null, data.svnPermissionAlias || null, data.repoRootPath || null, id
       ])
       return { success: true }
     } catch (error: any) {
@@ -133,6 +134,88 @@ export function registerIpcHandlers(database: DatabaseManager) {
     try {
       const repoInfo = await gitService.getRepoInfo(projectPath)
       return { success: true, data: repoInfo }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  // 扫描整合仓库内的子前端项目（识别 package.json），支持批量导入
+  ipcMain.handle('project:scanSubProjects', async (event, repoPath: string) => {
+    try {
+      if (!repoPath || !fs.existsSync(repoPath)) {
+        return { success: false, error: '仓库路径不存在' }
+      }
+      const skipDirs = new Set(['node_modules', '.git', 'dist', 'build', 'target', '.svn', 'doc', 'docs', '.idea', '.vscode', 'static', 'public'])
+      const results: any[] = []
+
+      const scanDir = async (dir: string, depth: number) => {
+        if (depth > 2) return
+        let entries: string[] = []
+        try { entries = await fs.readdir(dir) } catch { return }
+        for (const entry of entries) {
+          if (skipDirs.has(entry)) continue
+          const fullPath = path.join(dir, entry)
+          let stat
+          try { stat = await fs.stat(fullPath) } catch { continue }
+          if (!stat.isDirectory()) continue
+
+          const pkgPath = path.join(fullPath, 'package.json')
+          if (fs.existsSync(pkgPath)) {
+            try {
+              const pkg = await fs.readJson(pkgPath)
+              const scripts = pkg.scripts || {}
+              // 识别具备构建能力的前端项目
+              const hasBuild = !!(scripts.build || scripts['build:prod'] || scripts['build:dev'])
+              if (hasBuild) {
+                const buildCommand = scripts.build ? 'npm run build'
+                  : scripts['build:prod'] ? 'npm run build:prod'
+                  : 'npm run build:dev'
+                let outputDir = 'dist'
+                // vite 默认 dist；webpack 若存在配置尝试读取 output.path
+                try {
+                  const cfgFiles = await fs.readdir(fullPath)
+                  if (cfgFiles.includes('vite.config.ts') || cfgFiles.includes('vite.config.js')) {
+                    outputDir = 'dist'
+                  } else if (cfgFiles.includes('vue.config.js')) {
+                    outputDir = 'dist'
+                  }
+                } catch { /* keep default */ }
+                results.push({
+                  name: pkg.name || entry,
+                  localPath: fullPath,
+                  relativePath: path.relative(repoPath, fullPath),
+                  buildCommand,
+                  outputDir,
+                  nodeVersion: ''
+                })
+              }
+            } catch { /* skip invalid package.json */ }
+            // 即便不识别为前端项目，也不再向其内部继续扫描，避免误入
+            continue
+          }
+          // 未发现 package.json，继续向下一层扫描
+          await scanDir(fullPath, depth + 1)
+        }
+      }
+
+      await scanDir(repoPath, 0)
+
+      // 自动探测仓库根目录（若传入路径本身在 git 仓库内）
+      let repoRoot = repoPath
+      const detectedRoot = await gitService.getRepoRoot(repoPath)
+      if (detectedRoot) repoRoot = detectedRoot
+
+      return { success: true, data: { repoRoot, candidates: results } }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  // 探测指定路径所在 git 仓库根目录（用于整合仓库模式下自动填充）
+  ipcMain.handle('project:detectRepoRoot', async (event, localPath: string) => {
+    try {
+      const root = await gitService.getRepoRoot(localPath)
+      return { success: true, data: root }
     } catch (error: any) {
       return { success: false, error: error.message }
     }
@@ -456,6 +539,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
     try {
       const { project, svnPath, commitMessage, backupEnabled, needBuild = true, branch, syncPermissionFile = false, permissionSvnPath = '' } = config
       const svnCredential = config.svnCredential
+      // 整合仓库：git 操作在仓库根目录执行，构建在子项目目录执行
+      const gitPath = project.repoRootPath || project.localPath
       if (svnCredential && svnCredential.id) {
         const c = db.get('SELECT * FROM svn_credentials WHERE id=?', [svnCredential.id]) as any
         if (c) {
@@ -467,11 +552,11 @@ export function registerIpcHandlers(database: DatabaseManager) {
       }
 
       log('开始拉取代码...')
-      await gitService.pull(project.localPath)
+      await gitService.pull(gitPath)
       log('代码拉取完成')
       if (branch) {
         log(`切换到分支: ${branch}`)
-        await gitService.checkoutBranch(project.localPath, branch)
+        await gitService.checkoutBranch(gitPath, branch)
       }
       if (needBuild) {
         log('开始构建...')
@@ -507,7 +592,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
         log('同步权限文件: 项目未配置权限文件路径，跳过')
       }
 
-      const commit = await gitService.getCurrentCommit(project.localPath)
+      const commit = await gitService.getCurrentCommit(gitPath)
       const now = new Date().toLocaleString('sv-SE')
       const historyLog = logs.join('\n')
       db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -522,7 +607,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
         message: isCancelled ? '发布已取消' : undefined,
         error: isCancelled ? undefined : error.message
       })
-      const commit = await gitService.getCurrentCommit(config.project.localPath).catch(() => 'unknown')
+      const failGitPath = config.project.repoRootPath || config.project.localPath
+      const commit = await gitService.getCurrentCommit(failGitPath).catch(() => 'unknown')
       const now = new Date().toLocaleString('sv-SE')
       db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [config.project.id, 'svn', config.branch || 'main', commit, isCancelled ? 'cancelled' : 'failed', now, now, logs.join('\n')])
@@ -541,6 +627,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
     try {
       const { project, remotePath, backupEnabled, needBuild = true } = config
       const serverCredential = config.serverCredential
+      // 整合仓库：git 操作在仓库根目录执行
+      const gitPath = project.repoRootPath || project.localPath
       if (serverCredential && serverCredential.id) {
         const c = db.get('SELECT * FROM server_credentials WHERE id=?', [serverCredential.id]) as any
         if (c) {
@@ -553,11 +641,11 @@ export function registerIpcHandlers(database: DatabaseManager) {
         }
       }
       log('开始拉取代码...')
-      await gitService.pull(project.localPath)
+      await gitService.pull(gitPath)
       log('代码拉取完成')
       if (config.branch) {
         log(`切换到分支: ${config.branch}`)
-        await gitService.checkoutBranch(project.localPath, config.branch)
+        await gitService.checkoutBranch(gitPath, config.branch)
       }
       if (needBuild) {
         log('开始构建...')
@@ -586,7 +674,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
         event.sender.send('deploy:progress', { stage: 'uploading', progress })
       })
       log('上传完成')
-      const commit = await gitService.getCurrentCommit(project.localPath)
+      const commit = await gitService.getCurrentCommit(gitPath)
       const now = new Date().toLocaleString('sv-SE')
       const historyLog = logs.join('\n')
       db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -601,7 +689,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
         message: isCancelled ? '发布已取消' : undefined,
         error: isCancelled ? undefined : error.message
       })
-      const commit = await gitService.getCurrentCommit(config.project.localPath).catch(() => 'unknown')
+      const failGitPath = config.project.repoRootPath || config.project.localPath
+      const commit = await gitService.getCurrentCommit(failGitPath).catch(() => 'unknown')
       const now = new Date().toLocaleString('sv-SE')
       db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [config.project.id, 'server', config.branch || 'main', commit, isCancelled ? 'cancelled' : 'failed', now, now, logs.join('\n')])
@@ -619,6 +708,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
     }
     try {
       const { project, targets, branch, needBuild = true, syncPermissionFile = false, permissionSvnPath = '' } = config
+      // 整合仓库：git 操作在仓库根目录执行
+      const gitPath = project.repoRootPath || project.localPath
       log('加载凭证信息...')
       for (const target of targets) {
         if (target.type === 'server' && target.credential && target.credential.id) {
@@ -643,11 +734,11 @@ export function registerIpcHandlers(database: DatabaseManager) {
         }
       }
       log('开始拉取代码...')
-      await gitService.pull(project.localPath)
+      await gitService.pull(gitPath)
       log('代码拉取完成')
       if (branch) {
         log(`切换到分支: ${branch}`)
-        await gitService.checkoutBranch(project.localPath, branch)
+        await gitService.checkoutBranch(gitPath, branch)
       }
       if (needBuild) {
         log('开始构建...')
@@ -691,7 +782,7 @@ export function registerIpcHandlers(database: DatabaseManager) {
         log('同步权限文件: 项目未配置权限文件路径，跳过')
       }
 
-      const commit = await gitService.getCurrentCommit(project.localPath)
+      const commit = await gitService.getCurrentCommit(gitPath)
       const now = new Date().toLocaleString('sv-SE')
       const historyLog = logs.join('\n')
       db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -706,11 +797,140 @@ export function registerIpcHandlers(database: DatabaseManager) {
         message: isCancelled ? '发布已取消' : undefined,
         error: isCancelled ? undefined : error.message
       })
-      const commit = await gitService.getCurrentCommit(config.project.localPath).catch(() => 'unknown')
+      const failGitPath = config.project.repoRootPath || config.project.localPath
+      const commit = await gitService.getCurrentCommit(failGitPath).catch(() => 'unknown')
       const now = new Date().toLocaleString('sv-SE')
       db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [config.project.id, 'mixed', config.branch || 'main', commit, isCancelled ? 'cancelled' : 'failed', now, now, logs.join('\n')])
       return { success: false, error: error.message }
+    }
+  })
+
+  // 批量发布：整合仓库内多个子前端项目一次性发布。
+  // 同一仓库只执行一次 git pull/checkout，各子项目独立构建与上传，保证资源隔离与发布效率。
+  ipcMain.handle('deploy:batch', async (event, config) => {
+    sshService.resetAbort()
+    svnService.resetAbort()
+    const logs: string[] = []
+    const log = (msg: string) => {
+      logs.push(`[${new Date().toLocaleTimeString()}] ${msg}`)
+      event.sender.send('deploy:progress', { stage: 'building', log: msg })
+    }
+    const results: any[] = []
+    try {
+      const { projects, branch, needBuild = true, targets = [] } = config
+
+      if (!projects || projects.length === 0) {
+        throw new Error('未选择任何项目')
+      }
+
+      // 加载目标凭证
+      log('加载凭证信息...')
+      for (const target of targets) {
+        if (target.type === 'server' && target.credential && target.credential.id) {
+          const c = db.get('SELECT * FROM server_credentials WHERE id=?', [target.credential.id]) as any
+          if (c) {
+            Object.assign(target.credential, {
+              authType: c.auth_type || 'password',
+              password: c.password || '',
+              privateKey: c.private_key || '',
+              passphrase: c.passphrase || ''
+            })
+          }
+        }
+        if (target.type === 'svn' && target.credential && target.credential.id) {
+          const c = db.get('SELECT * FROM svn_credentials WHERE id=?', [target.credential.id]) as any
+          if (c) {
+            Object.assign(target.credential, {
+              svnUrl: c.svn_url || '',
+              password: c.password || ''
+            })
+          }
+        }
+      }
+
+      // 按仓库根目录分组，同一仓库只拉取/切换一次
+      const repoGroups = new Map<string, any[]>()
+      for (const project of projects) {
+        const repoKey = project.repoRootPath || project.localPath
+        if (!repoGroups.has(repoKey)) repoGroups.set(repoKey, [])
+        repoGroups.get(repoKey)!.push(project)
+      }
+
+      for (const [repoKey, groupProjects] of repoGroups) {
+        log(`拉取代码: ${repoKey}`)
+        await gitService.pull(repoKey)
+        if (branch) {
+          log(`切换到分支: ${branch}`)
+          await gitService.checkoutBranch(repoKey, branch)
+        }
+        const commit = await gitService.getCurrentCommit(repoKey)
+
+        // 各子项目独立构建与上传（资源隔离）
+        for (const project of groupProjects) {
+          const subLogs: string[] = []
+          log(`===== 开始处理项目: ${project.name} =====`)
+          try {
+            if (needBuild) {
+              log(`[${project.name}] 开始构建...`)
+              const buildResult = await buildService.build(project, (l: string) => {
+                subLogs.push(l)
+                event.sender.send('deploy:progress', { stage: 'building', log: `[${project.name}] ${l}` })
+              })
+              if (!buildResult.success) throw new Error(buildResult.error || '构建失败')
+              const isValid = await buildService.validateOutput(project)
+              if (!isValid) throw new Error('构建产物验证失败')
+              log(`[${project.name}] 构建完成`)
+            } else {
+              log(`[${project.name}] 跳过构建，使用已有产物`)
+            }
+
+            const outputPath = path.join(project.localPath, project.outputDir)
+
+            for (const target of targets) {
+              if (target.type === 'svn') {
+                log(`[${project.name}] 上传到 SVN: ${target.svnPath}`)
+                await svnService.uploadDirectory(target.credential, outputPath, target.svnPath, target.commitMessage)
+                log(`[${project.name}] SVN 上传完成`)
+              } else if (target.type === 'server') {
+                log(`[${project.name}] 压缩并上传到服务器: ${target.credential.host}:${target.remotePath}`)
+                await sshService.uploadDirectoryCompressed(target.credential, outputPath, target.remotePath, (progress: any) => {
+                  event.sender.send('deploy:progress', { stage: 'uploading', progress })
+                })
+                log(`[${project.name}] 服务器上传完成`)
+              }
+            }
+
+            const now = new Date().toLocaleString('sv-SE')
+            db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              [project.id, 'batch', branch || 'main', commit, 'success', now, now, logs.join('\n') + '\n' + subLogs.join('\n')])
+            results.push({ project: project.name, success: true })
+            log(`[${project.name}] 发布成功`)
+          } catch (err: any) {
+            const now = new Date().toLocaleString('sv-SE')
+            db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              [project.id, 'batch', branch || 'main', '', 'failed', now, now, logs.join('\n') + '\n' + (err.message || '')])
+            results.push({ project: project.name, success: false, error: err.message })
+            log(`[${project.name}] 发布失败: ${err.message}`)
+          }
+        }
+      }
+
+      const allSuccess = results.every((r) => r.success)
+      event.sender.send('deploy:progress', {
+        stage: allSuccess ? 'completed' : 'failed',
+        message: allSuccess ? '批量发布全部成功！' : '批量发布部分失败'
+      })
+      return { success: allSuccess, data: results }
+    } catch (error: any) {
+      const isCancelled = error.message === '发布已取消'
+      logs.push(`[${new Date().toLocaleTimeString()}] ${isCancelled ? '发布已取消' : '错误: ' + error.message}`)
+      event.sender.send('deploy:progress', {
+        stage: isCancelled ? 'cancelled' : 'failed',
+        message: isCancelled ? '发布已取消' : undefined,
+        error: isCancelled ? undefined : error.message
+      })
+      return { success: false, error: error.message, data: results }
     }
   })
 
@@ -919,8 +1139,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
         try { db.run('INSERT OR REPLACE INTO groups (id, name, color, sort_order) VALUES (?, ?, ?, ?)', [group.id, group.name, group.color, group.sort_order]) } catch (e) { /* skip */ }
       }
       for (const project of config.projects || []) {
-        try { db.run('INSERT OR REPLACE INTO projects (id, name, local_path, git_repo, git_branch, build_command, output_dir, group_id, description, permission_file_path, svn_permission_alias) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-          [project.id, project.name, project.local_path, project.git_repo, project.git_branch, project.build_command, project.output_dir, project.group_id, project.description, project.permission_file_path, project.svn_permission_alias]) } catch (e) { /* skip */ }
+        try { db.run('INSERT OR REPLACE INTO projects (id, name, local_path, git_repo, git_branch, build_command, output_dir, group_id, description, permission_file_path, svn_permission_alias, repo_root_path) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+          [project.id, project.name, project.local_path, project.git_repo, project.git_branch, project.build_command, project.output_dir, project.group_id, project.description, project.permission_file_path, project.svn_permission_alias, project.repo_root_path]) } catch (e) { /* skip */ }
       }
       for (const cred of config.serverCredentials || []) {
         try { db.run('INSERT OR REPLACE INTO server_credentials (id, name, host, port, username, auth_type, password, private_key, passphrase, environment, description) VALUES (?,?,?,?,?,?,?,?,?,?,?)',

@@ -39,6 +39,28 @@
           </el-select>
         </el-form-item>
 
+        <!-- 整合仓库：同仓库子项目批量选择 -->
+        <el-form-item label="同仓库项目" v-if="siblingProjects.length">
+          <div style="width: 100%;">
+            <el-checkbox-group v-model="batchSelectedIds">
+              <el-checkbox
+                v-for="sib in siblingProjects"
+                :key="sib.id"
+                :value="sib.id"
+                style="margin-right: 16px;"
+              >
+                {{ sib.name }}
+              </el-checkbox>
+            </el-checkbox-group>
+            <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+              勾选后将一同批量发布（Git 拉取/切换只执行一次，各项目独立构建与上传）
+              <span v-if="isBatchMode" style="color: #E6A23C; margin-left: 8px;">
+                批量模式：共 {{ batchProjects.length }} 个项目
+              </span>
+            </div>
+          </div>
+        </el-form-item>
+
         <el-form-item label="发布类型">
           <el-radio-group v-model="deployConfig.deployType">
             <el-radio value="svn">SVN 发布</el-radio>
@@ -138,7 +160,7 @@
             :loading="deploying"
             :disabled="!canDeploy"
           >
-            开始发布
+            {{ isBatchMode ? `批量发布 (${batchProjects.length})` : '开始发布' }}
           </el-button>
           <el-button
             v-if="deploying"
@@ -226,6 +248,22 @@ const svnCredentials = ref<any[]>([])
 const deploying = ref(false)
 const deployLogs = ref<string[]>([])
 
+// 整合仓库批量发布相关
+const batchSelectedIds = ref<number[]>([])
+const currentProject = computed(() => projects.value.find(p => p.id === deployConfig.value.projectId))
+const siblingProjects = computed(() => {
+  const cur = currentProject.value
+  if (!cur || !cur.repoRootPath) return []
+  return projects.value.filter(p => p.repoRootPath === cur.repoRootPath && p.id !== cur.id)
+})
+const isBatchMode = computed(() => batchSelectedIds.value.length > 0)
+const batchProjects = computed(() => {
+  const cur = currentProject.value
+  if (!cur) return []
+  const ids = new Set(batchSelectedIds.value)
+  return [cur, ...siblingProjects.value.filter(p => ids.has(p.id))]
+})
+
 const deployConfig = ref({
   projectId: null as number | null,
   branch: '',
@@ -275,6 +313,7 @@ const currentProjectPermissionFile = computed(() => {
 })
 
 const handleProjectChange = async () => {
+  batchSelectedIds.value = []
   if (deployConfig.value.projectId) {
     const project = projects.value.find(p => p.id === deployConfig.value.projectId)
     if (project) {
@@ -342,14 +381,59 @@ const startDeploy = async () => {
       throw new Error('项目不存在')
     }
 
-    const plainProject = JSON.parse(JSON.stringify(project))
-
     const nodeOk = await checkNodeVersion(project)
     if (!nodeOk) {
       deploying.value = false
       deployProgress.value = { stage: '', message: '' }
       return
     }
+
+    // 整合仓库批量发布：选中了同仓库其他项目时走批量通道
+    if (isBatchMode.value) {
+      const targets: any[] = []
+      if (deployConfig.value.deployType === 'svn' || deployConfig.value.deployType === 'mixed') {
+        const svnCred = svnCredentials.value.find(c => c.id === deployConfig.value.svnCredentialId)
+        targets.push({
+          type: 'svn',
+          credential: svnCred ? JSON.parse(JSON.stringify(svnCred)) : null,
+          svnPath: deployConfig.value.svnPath,
+          commitMessage: deployConfig.value.commitMessage
+        })
+      }
+      if (deployConfig.value.deployType === 'server' || deployConfig.value.deployType === 'mixed') {
+        const serverCred = serverCredentials.value.find(c => c.id === deployConfig.value.serverCredentialId)
+        targets.push({
+          type: 'server',
+          credential: serverCred ? JSON.parse(JSON.stringify(serverCred)) : null,
+          remotePath: deployConfig.value.remotePath
+        })
+      }
+
+      const plainProjects = batchProjects.value.map(p => JSON.parse(JSON.stringify(p)))
+      const result = await window.electronAPI.deploy.batch({
+        projects: plainProjects,
+        branch: deployConfig.value.branch,
+        needBuild: deployConfig.value.needBuild,
+        backupEnabled: deployConfig.value.backupEnabled,
+        targets
+      })
+
+      if (result.success) {
+        deployProgress.value = { stage: 'completed', message: '批量发布成功！' }
+        ElMessage.success('批量发布成功')
+      } else {
+        const failed = (result.data || []).filter((r: any) => !r.success)
+        deployProgress.value = { stage: 'failed', message: result.error || `部分项目发布失败 (${failed.length})` }
+        if (failed.length) {
+          ElMessage.warning(`失败项目: ${failed.map((r: any) => r.project).join(', ')}`)
+        } else {
+          ElMessage.error(result.error || '批量发布失败')
+        }
+      }
+      return
+    }
+
+    const plainProject = JSON.parse(JSON.stringify(project))
 
     let result
     

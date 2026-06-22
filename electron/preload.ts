@@ -9,7 +9,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     create: (data: any) => ipcRenderer.invoke('project:create', data),
     update: (id: number, data: any) => ipcRenderer.invoke('project:update', id, data),
     delete: (id: number) => ipcRenderer.invoke('project:delete', id),
-    scanGit: (path: string) => ipcRenderer.invoke('project:scanGit', path)
+    scanGit: (path: string) => ipcRenderer.invoke('project:scanGit', path),
+    scanSubProjects: (repoPath: string) => ipcRenderer.invoke('project:scanSubProjects', repoPath),
+    detectRepoRoot: (localPath: string) => ipcRenderer.invoke('project:detectRepoRoot', localPath)
   },
 
   // 分组相关
@@ -54,6 +56,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     svn: (config: any) => ipcRenderer.invoke('deploy:svn', config),
     server: (config: any) => ipcRenderer.invoke('deploy:server', config),
     mixed: (config: any) => ipcRenderer.invoke('deploy:mixed', config),
+    batch: (config: any) => ipcRenderer.invoke('deploy:batch', config),
     stop: () => ipcRenderer.invoke('deploy:stop'),
     getHistory: (projectId?: number) => ipcRenderer.invoke('deploy:getHistory', projectId),
     onProgress: (callback: (progress: any) => void) => {

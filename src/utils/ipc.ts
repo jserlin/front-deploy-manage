@@ -12,6 +12,8 @@ interface ElectronAPI {
     update: (id: number, data: any) => Promise<any>
     delete: (id: number) => Promise<any>
     scanGit: (path: string) => Promise<any>
+    scanSubProjects: (repoPath: string) => Promise<any>
+    detectRepoRoot: (localPath: string) => Promise<any>
   }
   group: {
     getAll: () => Promise<any>
@@ -46,6 +48,7 @@ interface ElectronAPI {
     svn: (config: any) => Promise<any>
     server: (config: any) => Promise<any>
     mixed: (config: any) => Promise<any>
+    batch: (config: any) => Promise<any>
     stop: () => Promise<any>
     getHistory: (projectId?: number) => Promise<any>
     onProgress: (callback: (progress: any) => void) => void

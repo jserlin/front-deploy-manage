@@ -7,6 +7,10 @@
           <el-icon><Collection /></el-icon>
           分组管理
         </el-button>
+        <el-button @click="showScanDialog">
+          <el-icon><Search /></el-icon>
+          扫描整合仓库
+        </el-button>
         <el-button type="primary" @click="showAddDialog">
           <el-icon><Plus /></el-icon>
           添加项目
@@ -53,7 +57,10 @@
         shadow="hover"
       >
         <div class="card-header">
-          <h3>{{ project.name }}</h3>
+          <h3>
+            {{ project.name }}
+            <el-tag v-if="project.repoRootPath" type="warning" size="small" effect="dark" style="margin-left: 6px;">整合</el-tag>
+          </h3>
           <el-tag v-if="project.groupName" :color="project.groupColor" size="small" style="color: #fff; border: none;">
             {{ project.groupName }}
           </el-tag>
@@ -103,7 +110,12 @@
       stripe
       style="width: 100%"
     >
-      <el-table-column prop="name" label="项目名称" width="180" />
+      <el-table-column prop="name" label="项目名称" width="200">
+        <template #default="{ row }">
+          {{ row.name }}
+          <el-tag v-if="row.repoRootPath" type="warning" size="small" effect="dark">整合</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="localPath" label="本地路径" min-width="200" show-overflow-tooltip />
       <el-table-column label="分组" width="120">
         <template #default="{ row }">
@@ -152,6 +164,22 @@
               <el-button @click="selectPath">选择</el-button>
             </template>
           </el-input>
+        </el-form-item>
+
+        <el-form-item label="整合仓库">
+          <el-input
+            v-model="formData.repoRootPath"
+            placeholder="独立仓库留空；整合仓库自动填充仓库根目录"
+            clearable
+          >
+            <template #prepend>
+              <el-tag v-if="formData.repoRootPath" type="warning" size="small" effect="plain" style="border:none">整合</el-tag>
+              <el-tag v-else type="info" size="small" effect="plain" style="border:none">独立</el-tag>
+            </template>
+          </el-input>
+          <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+            整合仓库模式下，Git 拉取/切换在仓库根目录执行，构建在子项目目录执行；多个子项目可批量发布
+          </div>
         </el-form-item>
 
         <el-form-item label="Git 仓库">
@@ -334,11 +362,82 @@
         <el-button type="primary" @click="createInlineGroup" :disabled="!inlineGroupName.trim()">创建并选择</el-button>
       </template>
     </el-dialog>
+
+    <!-- 扫描整合仓库对话框 -->
+    <el-dialog
+      v-model="scanDialogVisible"
+      title="扫描整合仓库"
+      width="720px"
+    >
+      <el-form label-width="90px">
+        <el-form-item label="仓库目录">
+          <div style="display: flex; gap: 8px; width: 100%;">
+            <el-input
+              v-model="scanRepoPath"
+              placeholder="点击右侧按钮选择整合仓库根目录"
+              readonly
+              style="flex: 1;"
+            />
+            <el-button @click="selectScanRepoPath">
+              <el-icon><FolderOpened /></el-icon>
+              选择目录
+            </el-button>
+            <el-button type="primary" @click="doScan" :loading="scanning" :disabled="!scanRepoPath">
+              <el-icon><Search /></el-icon>
+              扫描
+            </el-button>
+          </div>
+        </el-form-item>
+        <el-form-item label="导入分组">
+          <el-select v-model="scanGroupId" placeholder="选择分组（可选）" clearable style="width: 100%">
+            <el-option
+              v-for="group in groups"
+              :key="group.id"
+              :label="group.name"
+              :value="group.id"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+
+      <div v-if="scanRepoRoot" style="margin-bottom: 12px;">
+        <el-tag type="success" size="small">仓库根目录: {{ scanRepoRoot }}</el-tag>
+      </div>
+
+      <el-table
+        v-if="scanCandidates.length"
+        ref="scanTableRef"
+        :data="scanCandidates"
+        border
+        stripe
+        max-height="320"
+        @selection-change="(rows: any[]) => scanSelectedIds = rows.map((r) => r._id)"
+      >
+        <el-table-column type="selection" width="45" />
+        <el-table-column prop="name" label="项目名称" width="180" show-overflow-tooltip />
+        <el-table-column prop="relativePath" label="相对路径" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="buildCommand" label="构建命令" width="150" show-overflow-tooltip />
+        <el-table-column prop="outputDir" label="产物目录" width="100" />
+      </el-table>
+
+      <el-empty v-else-if="!scanning && scanRepoPath" description="未发现子项目" :image-size="60" />
+
+      <template #footer>
+        <el-button @click="scanDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          @click="importScannedProjects"
+          :disabled="scanSelectedIds.length === 0"
+        >
+          导入选中 {{ scanSelectedIds.length }} 项
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useProjectStore } from '@/stores/project'
@@ -370,7 +469,8 @@ const formData = ref({
   description: '',
   nodeVersion: '',
   permissionFilePath: '',
-  svnPermissionAlias: ''
+  svnPermissionAlias: '',
+  repoRootPath: ''
 })
 
 const rules = {
@@ -421,6 +521,16 @@ const inlineGroupVisible = ref(false)
 const inlineGroupName = ref('')
 const inlineGroupColor = ref('#409EFF')
 
+// 整合仓库扫描相关
+const scanDialogVisible = ref(false)
+const scanRepoPath = ref('')
+const scanning = ref(false)
+const scanCandidates = ref<any[]>([])
+const scanRepoRoot = ref('')
+const scanSelectedIds = ref<string[]>([])
+const scanGroupId = ref<number | null>(null)
+const scanTableRef = ref<any>(null)
+
 const fetchGroups = async () => {
   try {
     const result = await window.electronAPI.group.getAll()
@@ -453,7 +563,8 @@ const editProject = (project: Project) => {
     description: project.description || '',
     nodeVersion: project.nodeVersion || '',
     permissionFilePath: project.permissionFilePath || '',
-    svnPermissionAlias: project.svnPermissionAlias || ''
+    svnPermissionAlias: project.svnPermissionAlias || '',
+    repoRootPath: project.repoRootPath || ''
   }
   dialogVisible.value = true
 }
@@ -497,6 +608,17 @@ const selectPath = async () => {
         if (!formData.value.name) {
           const parts = formData.value.localPath.replace(/\\/g, '/').split('/')
           formData.value.name = parts[parts.length - 1] || ''
+        }
+      }
+
+      // 自动探测仓库根目录：若与 localPath 不同，则判定为整合仓库子项目
+      const rootResult = await window.electronAPI.project.detectRepoRoot(formData.value.localPath)
+      if (rootResult && rootResult.success && rootResult.data) {
+        const detected = rootResult.data
+        if (detected && detected.replace(/[\\/]+$/, '') !== formData.value.localPath.replace(/[\\/]+$/, '')) {
+          formData.value.repoRootPath = detected
+        } else {
+          formData.value.repoRootPath = ''
         }
       }
     }
@@ -549,7 +671,8 @@ const resetForm = () => {
     description: '',
     nodeVersion: '',
     permissionFilePath: '',
-    svnPermissionAlias: ''
+    svnPermissionAlias: '',
+    repoRootPath: ''
   }
 }
 
@@ -633,6 +756,88 @@ const deleteGroup = async (group: any) => {
       ElMessage.error(error.message || '删除失败')
     }
   }
+}
+
+const showScanDialog = () => {
+  scanRepoPath.value = ''
+  scanCandidates.value = []
+  scanRepoRoot.value = ''
+  scanSelectedIds.value = []
+  scanGroupId.value = null
+  scanDialogVisible.value = true
+}
+
+const selectScanRepoPath = async () => {
+  try {
+    const result = await window.electronAPI.config.selectFile()
+    if (result && result.success && result.path) {
+      scanRepoPath.value = result.path
+      await doScan()
+    }
+  } catch (error) {
+    console.error('selectScanRepoPath error:', error)
+  }
+}
+
+const doScan = async () => {
+  if (!scanRepoPath.value) return
+  scanning.value = true
+  scanCandidates.value = []
+  scanSelectedIds.value = []
+  try {
+    const result = await window.electronAPI.project.scanSubProjects(scanRepoPath.value)
+    if (result && result.success && result.data) {
+      scanRepoRoot.value = result.data.repoRoot || scanRepoPath.value
+      scanCandidates.value = (result.data.candidates || []).map((c: any) => ({
+        ...c,
+        _id: c.localPath
+      }))
+      // 默认全选
+      scanSelectedIds.value = scanCandidates.value.map((c: any) => c._id)
+      // 同步表格视觉选中状态
+      await nextTick()
+      scanTableRef.value?.toggleAllSelection()
+      if (scanCandidates.value.length === 0) {
+        ElMessage.warning('未在该目录下发现具备构建能力的前端项目')
+      }
+    } else {
+      ElMessage.error(result?.error || '扫描失败')
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '扫描失败')
+  } finally {
+    scanning.value = false
+  }
+}
+
+const importScannedProjects = async () => {
+  const selected = scanCandidates.value.filter((c) => scanSelectedIds.value.includes(c._id))
+  if (selected.length === 0) {
+    ElMessage.warning('请至少选择一个子项目')
+    return
+  }
+  let successCount = 0
+  let failCount = 0
+  for (const c of selected) {
+    try {
+      await projectStore.createProject({
+        name: c.name,
+        localPath: c.localPath,
+        buildCommand: c.buildCommand,
+        outputDir: c.outputDir,
+        nodeVersion: c.nodeVersion || '',
+        groupId: scanGroupId.value,
+        repoRootPath: scanRepoRoot.value,
+        description: `整合仓库子项目 (${c.relativePath})`
+      })
+      successCount++
+    } catch (e) {
+      failCount++
+    }
+  }
+  if (successCount) ElMessage.success(`成功导入 ${successCount} 个项目${failCount ? `，${failCount} 个失败` : ''}`)
+  else if (failCount) ElMessage.error(`导入失败 ${failCount} 个项目`)
+  scanDialogVisible.value = false
 }
 
 const showInlineGroupDialog = () => {

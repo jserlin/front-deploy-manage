@@ -151,7 +151,8 @@ const getDeployTypeLabel = (type: string) => {
   const labels: Record<string, string> = {
     svn: 'SVN',
     server: '服务器',
-    mixed: '混合'
+    mixed: '混合',
+    batch: '批量'
   }
   return labels[type] || type
 }

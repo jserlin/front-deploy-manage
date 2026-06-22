@@ -16,6 +16,8 @@ export interface Project {
   buildCommand: string
   outputDir: string
   nodeVersion?: string
+  /** 整合仓库根目录，留空则回退到 localPath */
+  repoRootPath?: string
 }
 
 export class BuildService {

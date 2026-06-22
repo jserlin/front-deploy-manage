@@ -156,4 +156,22 @@ export class GitService {
       return ''
     }
   }
+
+  /**
+   * 获取指定路径所在 Git 仓库的根目录（toplevel）。
+   * 用于整合仓库场景：传入子项目目录，返回仓库根目录。
+   * 若不是 git 仓库则返回 null。
+   */
+  async getRepoRoot(localPath: string): Promise<string | null> {
+    try {
+      const git = this.getGit(localPath)
+      const isRepo = await git.checkIsRepo()
+      if (!isRepo) return null
+      const root = await git.revparse(['--show-toplevel'])
+      return root ? root.trim() : null
+    } catch (error) {
+      logger.error('Failed to get repo root:', error)
+      return null
+    }
+  }
 }
