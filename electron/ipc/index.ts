@@ -18,6 +18,62 @@ export function registerIpcHandlers(database: DatabaseManager) {
   const buildService = new BuildService()
   const nodeVersionService = new NodeVersionService()
 
+  /**
+   * 分支准备 + commit 信息收集（容错版）。
+   * - 检查分支在本地/远程的存在状态并记录结构化日志
+   * - 本地存在但远程不存在时不中断，记录提示后继续
+   * - pull / checkout 失败时记录警告但不中断流程
+   * - 返回当前 HEAD 的完整 commit 详情
+   */
+  async function prepareBranchAndCollectCommit(
+    gitPath: string,
+    branch: string | undefined,
+    log: (msg: string) => void
+  ): Promise<{ hash: string; shortHash: string; message: string; author: string; date: string; tags: string[] }> {
+    const targetBranch = branch || ''
+
+    // 1. 分支状态检查
+    if (targetBranch) {
+      try {
+        const bs = await gitService.checkBranchStatus(gitPath, targetBranch)
+        log(`[分支检查] 分支: ${targetBranch} | 本地: ${bs.localExists ? '存在' : '不存在'} | 远程: ${bs.remoteExists ? '存在' : '不存在'} | 上游跟踪: ${bs.hasUpstream ? '已设置' : '未设置'} | 当前分支: ${bs.current} | 检测时间: ${bs.checkedAt}`)
+
+        if (!bs.localExists && !bs.remoteExists) {
+          log(`[分支警告] 分支 "${targetBranch}" 在本地和远程均不存在，保持当前分支 "${bs.current}"`)
+        } else if (bs.localExists && !bs.remoteExists) {
+          log(`[分支提示] 分支 "${targetBranch}" 仅本地存在（远程不存在），将切换到本地分支继续发布`)
+        }
+
+        // 2. 安全切换分支（仅在需要时）
+        if ((bs.localExists || bs.remoteExists) && bs.current !== targetBranch) {
+          try {
+            await gitService.checkoutBranch(gitPath, targetBranch)
+            log(`[分支切换] 已切换到: ${targetBranch}`)
+          } catch (e: any) {
+            log(`[分支警告] 切换分支 "${targetBranch}" 失败: ${e.message}，继续使用当前分支`)
+          }
+        }
+      } catch (e: any) {
+        log(`[分支警告] 分支状态检查异常: ${e.message}，跳过分支切换`)
+      }
+    }
+
+    // 3. 安全拉取代码（失败不中断）
+    try {
+      await gitService.pull(gitPath)
+      log('代码拉取完成')
+    } catch (e: any) {
+      log(`[拉取警告] 代码拉取失败: ${e.message}，继续使用本地代码`)
+    }
+
+    // 4. 收集完整 commit 信息
+    const detail = await gitService.getCommitDetail(gitPath)
+    const firstLine = detail.message ? detail.message.split('\n')[0] : '(无提交信息)'
+    log(`[版本信息] Commit: ${detail.shortHash || '(未知)'} | 提交信息: ${firstLine} | 作者: ${detail.author || '(未知)'} | 时间: ${detail.date || '(未知)'}${detail.tags.length ? ' | Tags: ' + detail.tags.join(', ') : ' | Tags: (无)'}`)
+
+    return detail
+  }
+
   // ==================== 项目管理 ====================
 
   ipcMain.handle('project:getAll', async () => {
@@ -551,13 +607,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
         }
       }
 
-      log('开始拉取代码...')
-      await gitService.pull(gitPath)
-      log('代码拉取完成')
-      if (branch) {
-        log(`切换到分支: ${branch}`)
-        await gitService.checkoutBranch(gitPath, branch)
-      }
+      log('开始准备分支...')
+      const commitDetail = await prepareBranchAndCollectCommit(gitPath, branch, log)
       if (needBuild) {
         log('开始构建...')
         const buildResult = await buildService.build(project, (l: string) => {
@@ -592,11 +643,10 @@ export function registerIpcHandlers(database: DatabaseManager) {
         log('同步权限文件: 项目未配置权限文件路径，跳过')
       }
 
-      const commit = await gitService.getCurrentCommit(gitPath)
       const now = new Date().toLocaleString('sv-SE')
       const historyLog = logs.join('\n')
-      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [project.id, 'svn', branch || 'main', commit, 'success', now, now, historyLog])
+      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, commit_message, commit_author, commit_date, git_tags, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [project.id, 'svn', branch || 'main', commitDetail.hash, commitDetail.message, commitDetail.author, commitDetail.date, commitDetail.tags.join(', '), 'success', now, now, historyLog])
       event.sender.send('deploy:progress', { stage: 'completed', message: 'SVN 发布成功！' })
       return { success: true }
     } catch (error: any) {
@@ -608,10 +658,10 @@ export function registerIpcHandlers(database: DatabaseManager) {
         error: isCancelled ? undefined : error.message
       })
       const failGitPath = config.project.repoRootPath || config.project.localPath
-      const commit = await gitService.getCurrentCommit(failGitPath).catch(() => 'unknown')
+      const failDetail = await gitService.getCommitDetail(failGitPath)
       const now = new Date().toLocaleString('sv-SE')
-      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [config.project.id, 'svn', config.branch || 'main', commit, isCancelled ? 'cancelled' : 'failed', now, now, logs.join('\n')])
+      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, commit_message, commit_author, commit_date, git_tags, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [config.project.id, 'svn', config.branch || 'main', failDetail.hash, failDetail.message, failDetail.author, failDetail.date, failDetail.tags.join(', '), isCancelled ? 'cancelled' : 'failed', now, now, logs.join('\n')])
       return { success: false, error: error.message }
     }
   })
@@ -640,13 +690,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
           })
         }
       }
-      log('开始拉取代码...')
-      await gitService.pull(gitPath)
-      log('代码拉取完成')
-      if (config.branch) {
-        log(`切换到分支: ${config.branch}`)
-        await gitService.checkoutBranch(gitPath, config.branch)
-      }
+      log('开始准备分支...')
+      const commitDetail = await prepareBranchAndCollectCommit(gitPath, config.branch, log)
       if (needBuild) {
         log('开始构建...')
         const buildResult = await buildService.build(project, (l: string) => {
@@ -674,11 +719,10 @@ export function registerIpcHandlers(database: DatabaseManager) {
         event.sender.send('deploy:progress', { stage: 'uploading', progress })
       })
       log('上传完成')
-      const commit = await gitService.getCurrentCommit(gitPath)
       const now = new Date().toLocaleString('sv-SE')
       const historyLog = logs.join('\n')
-      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [project.id, 'server', config.branch || 'main', commit, 'success', now, now, historyLog])
+      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, commit_message, commit_author, commit_date, git_tags, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [project.id, 'server', config.branch || 'main', commitDetail.hash, commitDetail.message, commitDetail.author, commitDetail.date, commitDetail.tags.join(', '), 'success', now, now, historyLog])
       event.sender.send('deploy:progress', { stage: 'completed', message: '发布成功！' })
       return { success: true }
     } catch (error: any) {
@@ -690,10 +734,10 @@ export function registerIpcHandlers(database: DatabaseManager) {
         error: isCancelled ? undefined : error.message
       })
       const failGitPath = config.project.repoRootPath || config.project.localPath
-      const commit = await gitService.getCurrentCommit(failGitPath).catch(() => 'unknown')
+      const failDetail = await gitService.getCommitDetail(failGitPath)
       const now = new Date().toLocaleString('sv-SE')
-      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [config.project.id, 'server', config.branch || 'main', commit, isCancelled ? 'cancelled' : 'failed', now, now, logs.join('\n')])
+      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, commit_message, commit_author, commit_date, git_tags, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [config.project.id, 'server', config.branch || 'main', failDetail.hash, failDetail.message, failDetail.author, failDetail.date, failDetail.tags.join(', '), isCancelled ? 'cancelled' : 'failed', now, now, logs.join('\n')])
       return { success: false, error: error.message }
     }
   })
@@ -733,13 +777,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
           }
         }
       }
-      log('开始拉取代码...')
-      await gitService.pull(gitPath)
-      log('代码拉取完成')
-      if (branch) {
-        log(`切换到分支: ${branch}`)
-        await gitService.checkoutBranch(gitPath, branch)
-      }
+      log('开始准备分支...')
+      const commitDetail = await prepareBranchAndCollectCommit(gitPath, branch, log)
       if (needBuild) {
         log('开始构建...')
         const buildResult = await buildService.build(project, (l: string) => {
@@ -782,11 +821,10 @@ export function registerIpcHandlers(database: DatabaseManager) {
         log('同步权限文件: 项目未配置权限文件路径，跳过')
       }
 
-      const commit = await gitService.getCurrentCommit(gitPath)
       const now = new Date().toLocaleString('sv-SE')
       const historyLog = logs.join('\n')
-      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [project.id, 'mixed', branch || 'main', commit, 'success', now, now, historyLog])
+      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, commit_message, commit_author, commit_date, git_tags, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [project.id, 'mixed', branch || 'main', commitDetail.hash, commitDetail.message, commitDetail.author, commitDetail.date, commitDetail.tags.join(', '), 'success', now, now, historyLog])
       event.sender.send('deploy:progress', { stage: 'completed', message: '混合发布成功！' })
       return { success: true }
     } catch (error: any) {
@@ -798,10 +836,10 @@ export function registerIpcHandlers(database: DatabaseManager) {
         error: isCancelled ? undefined : error.message
       })
       const failGitPath = config.project.repoRootPath || config.project.localPath
-      const commit = await gitService.getCurrentCommit(failGitPath).catch(() => 'unknown')
+      const failDetail = await gitService.getCommitDetail(failGitPath)
       const now = new Date().toLocaleString('sv-SE')
-      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [config.project.id, 'mixed', config.branch || 'main', commit, isCancelled ? 'cancelled' : 'failed', now, now, logs.join('\n')])
+      db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, commit_message, commit_author, commit_date, git_tags, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [config.project.id, 'mixed', config.branch || 'main', failDetail.hash, failDetail.message, failDetail.author, failDetail.date, failDetail.tags.join(', '), isCancelled ? 'cancelled' : 'failed', now, now, logs.join('\n')])
       return { success: false, error: error.message }
     }
   })
@@ -858,13 +896,8 @@ export function registerIpcHandlers(database: DatabaseManager) {
       }
 
       for (const [repoKey, groupProjects] of repoGroups) {
-        log(`拉取代码: ${repoKey}`)
-        await gitService.pull(repoKey)
-        if (branch) {
-          log(`切换到分支: ${branch}`)
-          await gitService.checkoutBranch(repoKey, branch)
-        }
-        const commit = await gitService.getCurrentCommit(repoKey)
+        log(`准备分支: ${repoKey}`)
+        const commitDetail = await prepareBranchAndCollectCommit(repoKey, branch, log)
 
         // 各子项目独立构建与上传（资源隔离）
         for (const project of groupProjects) {
@@ -902,14 +935,14 @@ export function registerIpcHandlers(database: DatabaseManager) {
             }
 
             const now = new Date().toLocaleString('sv-SE')
-            db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-              [project.id, 'batch', branch || 'main', commit, 'success', now, now, logs.join('\n') + '\n' + subLogs.join('\n')])
+            db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, commit_message, commit_author, commit_date, git_tags, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [project.id, 'batch', branch || 'main', commitDetail.hash, commitDetail.message, commitDetail.author, commitDetail.date, commitDetail.tags.join(', '), 'success', now, now, logs.join('\n') + '\n' + subLogs.join('\n')])
             results.push({ project: project.name, success: true })
             log(`[${project.name}] 发布成功`)
           } catch (err: any) {
             const now = new Date().toLocaleString('sv-SE')
-            db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-              [project.id, 'batch', branch || 'main', '', 'failed', now, now, logs.join('\n') + '\n' + (err.message || '')])
+            db.run(`INSERT INTO deploy_history (project_id, deploy_type, git_branch, git_commit, commit_message, commit_author, commit_date, git_tags, status, started_at, finished_at, log) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [project.id, 'batch', branch || 'main', commitDetail.hash, commitDetail.message, commitDetail.author, commitDetail.date, commitDetail.tags.join(', '), 'failed', now, now, logs.join('\n') + '\n' + (err.message || '')])
             results.push({ project: project.name, success: false, error: err.message })
             log(`[${project.name}] 发布失败: ${err.message}`)
           }
@@ -983,6 +1016,10 @@ export function registerIpcHandlers(database: DatabaseManager) {
         deployType: h.deploy_type,
         gitBranch: h.git_branch,
         gitCommit: h.git_commit,
+        commitMessage: h.commit_message || '',
+        commitAuthor: h.commit_author || '',
+        commitDate: h.commit_date || '',
+        gitTags: h.git_tags || '',
         status: h.status,
         startedAt: h.started_at,
         finishedAt: h.finished_at,

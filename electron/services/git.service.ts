@@ -23,6 +23,24 @@ export interface Commit {
   author_name: string
 }
 
+export interface BranchStatus {
+  branch: string
+  localExists: boolean
+  remoteExists: boolean
+  current: string
+  hasUpstream: boolean
+  checkedAt: string
+}
+
+export interface CommitDetail {
+  hash: string
+  shortHash: string
+  message: string
+  author: string
+  date: string
+  tags: string[]
+}
+
 export class GitService {
   private gitInstances: Map<string, SimpleGit> = new Map()
 
@@ -172,6 +190,71 @@ export class GitService {
     } catch (error) {
       logger.error('Failed to get repo root:', error)
       return null
+    }
+  }
+
+  /**
+   * 检查指定分支在本地和远程的存在状态。
+   * 用于发布前分支状态诊断，识别"本地存在但远程不存在"等场景。
+   */
+  async checkBranchStatus(localPath: string, branch: string): Promise<BranchStatus> {
+    const git = this.getGit(localPath)
+    const status = await git.status()
+    const localBranches = await git.branchLocal()
+    const localExists = localBranches.all.includes(branch)
+
+    let remoteExists = false
+    try {
+      const remoteBranches = await git.branch(['-r'])
+      remoteExists = remoteBranches.all.some((b: string) => {
+        const trimmed = b.trim()
+        // 匹配 origin/branch 或 origin/tags/branch 等
+        return trimmed === `origin/${branch}` || trimmed.endsWith(`/${branch}`)
+      })
+    } catch {
+      // 远程不可达或无远程分支
+    }
+
+    return {
+      branch,
+      localExists,
+      remoteExists,
+      current: status.current || '',
+      hasUpstream: !!status.tracking,
+      checkedAt: new Date().toISOString()
+    }
+  }
+
+  /**
+   * 获取当前 HEAD 的完整 commit 信息（哈希、提交信息、作者、时间、关联 tag）。
+   */
+  async getCommitDetail(localPath: string): Promise<CommitDetail> {
+    try {
+      const git = this.getGit(localPath)
+      const log = await git.log(['--max-count=1'])
+      const latest = log.latest
+
+      let tags: string[] = []
+      if (latest) {
+        try {
+          const tagResult = await git.tag(['--points-at', latest.hash])
+          tags = tagResult.split('\n').map((t: string) => t.trim()).filter(Boolean)
+        } catch {
+          // 无 tag 或获取失败
+        }
+      }
+
+      return {
+        hash: latest?.hash || '',
+        shortHash: latest?.hash ? latest.hash.substring(0, 8) : '',
+        message: latest?.message || '',
+        author: latest?.author_name || '',
+        date: latest?.date || '',
+        tags
+      }
+    } catch (error) {
+      logger.error('Failed to get commit detail:', error)
+      return { hash: '', shortHash: '', message: '', author: '', date: '', tags: [] }
     }
   }
 }

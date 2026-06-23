@@ -52,26 +52,81 @@ export class BuildService {
     }
   }
 
+  /**
+   * 构建前诊断实际使用的 Node/npm 版本和路径。
+   * 检查 node 和 npm 是否来自同一目录，不一致时给出明确警告。
+   * 不做版本拦截（v13 + npm6 等组合是合法的）。
+   */
+  private async checkBuildEnv(
+    env: { [key: string]: string | undefined },
+    onLog?: (log: string) => void
+  ): Promise<{ ok: boolean; error?: string }> {
+    const run = (cmd: string): Promise<string> => new Promise((res) => {
+      const child = spawn(cmd, { shell: true, env, timeout: 8000 })
+      let out = ''
+      child.stdout?.on('data', (d: Buffer) => { out += d.toString() })
+      child.stderr?.on('data', () => {})
+      child.on('close', () => res(out.trim()))
+      child.on('error', () => res(''))
+    })
+
+    // 获取版本和路径
+    const nodeVer = await run('node -v')
+    const npmVer = await run('npm -v')
+    const nodePath = await run('where node')
+    const npmPath = await run('where npm')
+
+    if (onLog) {
+      onLog(`[环境检查] Node: ${nodeVer || '(未检测到)'} | npm: ${npmVer || '(未检测到)'}`)
+      if (nodePath) onLog(`[环境检查] node 路径: ${nodePath.split('\r\n')[0]}`)
+      if (npmPath) onLog(`[环境检查] npm 路径: ${npmPath.split('\r\n')[0]}`)
+    }
+
+    // 检查 node 和 npm 是否来自同一版本目录
+    const nodeFirst = nodePath.split('\r\n')[0].toLowerCase()
+    const npmFirst = npmPath.split('\r\n')[0].toLowerCase()
+
+    if (nodeFirst && npmFirst) {
+      // 取各自所在目录进行比较
+      const nodeDir = nodeFirst.substring(0, nodeFirst.lastIndexOf('\\'))
+      const npmDir = npmFirst.substring(0, npmFirst.lastIndexOf('\\'))
+
+      if (nodeDir && npmDir && nodeDir !== npmDir) {
+        const msg = `Node 和 npm 来自不同目录，可能导致版本不匹配:\n  Node: ${nodeDir}\n  npm: ${npmDir}`
+        if (onLog) onLog(`[环境警告] ${msg}`)
+        logger.warn(msg)
+      }
+    }
+
+    return { ok: true }
+  }
+
   async build(
     project: Project,
     onLog?: (log: string) => void
   ): Promise<BuildResult> {
-    return new Promise((resolve) => {
-      try {
-        logger.info(`Starting build for project: ${project.name}`)
-        
-        if (!fs.existsSync(project.localPath)) {
-          resolve({
-            success: false,
-            output: '',
-            error: 'Project directory does not exist'
-          })
-          return
-        }
+    try {
+      logger.info(`Starting build for project: ${project.name}`)
 
+      if (!fs.existsSync(project.localPath)) {
+        return {
+          success: false,
+          output: '',
+          error: 'Project directory does not exist'
+        }
+      }
+
+      const env = this.getNodeEnvPath(project.nodeVersion)
+
+      // 构建前检查 Node/npm 版本
+      const envCheck = await this.checkBuildEnv(env, onLog)
+      if (!envCheck.ok) {
+        return { success: false, output: '', error: envCheck.error! }
+      }
+
+      return new Promise((resolve) => {
         const [command, ...args] = project.buildCommand.split(' ')
-        const env = this.getNodeEnvPath(project.nodeVersion)
-        
+
         this.currentProcess = spawn(command, args, {
           cwd: project.localPath,
           shell: true,
@@ -128,15 +183,15 @@ export class BuildService {
             error: err.message
           })
         })
-      } catch (error: any) {
-        logger.error('Build failed:', error)
-        resolve({
-          success: false,
-          output: '',
-          error: error.message
-        })
+      })
+    } catch (error: any) {
+      logger.error('Build failed:', error)
+      return {
+        success: false,
+        output: '',
+        error: error.message
       }
-    })
+    }
   }
 
   stopBuild(): void {

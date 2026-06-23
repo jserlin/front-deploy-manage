@@ -39,6 +39,18 @@
           </span>
         </template>
       </el-table-column>
+      <el-table-column prop="commitMessage" label="提交信息" min-width="200" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span v-if="row.commitMessage">{{ row.commitMessage.split('\n')[0] }}</span>
+          <span v-else style="color: #c0c4cc;">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="gitTags" label="Tags" width="120">
+        <template #default="{ row }">
+          <el-tag v-if="row.gitTags" size="small" type="warning">{{ row.gitTags }}</el-tag>
+          <span v-else style="color: #c0c4cc;">-</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" width="100">
         <template #default="{ row }">
           <el-tag :type="getStatusType(row.status)">
@@ -84,6 +96,18 @@
             <el-icon><Document /></el-icon>
             Commit: {{ currentLogCommit }}
           </span>
+          <span class="log-info-item" v-if="currentLogMessage">
+            <el-icon><ChatLineSquare /></el-icon>
+            提交: {{ currentLogMessage }}
+          </span>
+          <span class="log-info-item" v-if="currentLogTags">
+            <el-icon><PriceTag /></el-icon>
+            Tags: {{ currentLogTags }}
+          </span>
+          <span class="log-info-item" v-if="currentLogAuthor">
+            <el-icon><User /></el-icon>
+            作者: {{ currentLogAuthor }}
+          </span>
           <span class="log-info-item" v-if="currentLogTime">
             <el-icon><Clock /></el-icon>
             {{ currentLogTime }}
@@ -105,7 +129,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Refresh, Folder, Document, Clock, CopyDocument } from '@element-plus/icons-vue'
+import { Refresh, Folder, Document, Clock, CopyDocument, ChatLineSquare, PriceTag, User } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import { useProjectStore } from '@/stores/project'
 
@@ -192,6 +216,9 @@ const viewLog = (row: any) => {
   currentLogStatus.value = row.status || ''
   currentLogBranch.value = row.gitBranch || ''
   currentLogCommit.value = row.gitCommit ? row.gitCommit.substring(0, 8) : ''
+  currentLogMessage.value = row.commitMessage ? row.commitMessage.split('\n')[0] : ''
+  currentLogTags.value = row.gitTags || ''
+  currentLogAuthor.value = row.commitAuthor || ''
   currentLogTime.value = row.startedAt ? formatTime(row.startedAt) : ''
   logDialogVisible.value = true
 }
